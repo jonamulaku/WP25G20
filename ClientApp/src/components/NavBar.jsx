@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Menu, X, Mail, Phone, MapPin, Send, X as XIcon } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Menu, X, Mail, Phone, MapPin, Send, X as XIcon, Lock, Eye, EyeOff, ArrowRight, LogIn } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Logo from "../assets/logos/Group.svg";
 
 export default function Navbar() {
     const [open, setOpen] = useState(false);
     const [contactModalOpen, setContactModalOpen] = useState(false);
+    const [loginModalOpen, setLoginModalOpen] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -14,7 +15,14 @@ export default function Navbar() {
         subject: "",
         message: ""
     });
+    const [loginData, setLoginData] = useState({
+        email: "",
+        password: ""
+    });
+    const [showPassword, setShowPassword] = useState(false);
+    const [loginErrors, setLoginErrors] = useState({});
     const location = useLocation();
+    const navigate = useNavigate();
 
     const navLinks = [
         { path: "/", label: "Home" },
@@ -48,6 +56,55 @@ export default function Navbar() {
             message: ""
         });
         setContactModalOpen(false);
+    };
+
+    const handleLoginInputChange = (e) => {
+        const { name, value } = e.target;
+        setLoginData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+        // Clear error when user starts typing
+        if (loginErrors[name]) {
+            setLoginErrors(prev => ({
+                ...prev,
+                [name]: ""
+            }));
+        }
+    };
+
+    const validateLoginForm = () => {
+        const newErrors = {};
+
+        if (!loginData.email) {
+            newErrors.email = "Email is required";
+        } else if (!/\S+@\S+\.\S+/.test(loginData.email)) {
+            newErrors.email = "Email is invalid";
+        }
+
+        if (!loginData.password) {
+            newErrors.password = "Password is required";
+        } else if (loginData.password.length < 6) {
+            newErrors.password = "Password must be at least 6 characters";
+        }
+
+        setLoginErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleLoginSubmit = (e) => {
+        e.preventDefault();
+        
+        if (validateLoginForm()) {
+            // Handle login logic here
+            console.log("Login attempt:", loginData);
+            // In real app, you would make an API call here
+            alert("Login successful! Redirecting...");
+            setLoginData({ email: "", password: "" });
+            setLoginModalOpen(false);
+            // Navigate to dashboard or home
+            navigate("/");
+        }
     };
 
     return (
@@ -86,8 +143,17 @@ export default function Navbar() {
                             </Link>
                         </div>
 
-                        {/* CONTACT BUTTON - Desktop */}
+                        {/* LOGIN & CONTACT BUTTONS - Desktop */}
                         <div className="hidden lg:flex items-center gap-4 flex-1 justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setLoginModalOpen(true)}
+                                className="px-6 py-2.5 bg-white border-2 border-emerald-600 text-emerald-600 rounded-xl font-semibold
+                                         hover:bg-emerald-50 transition-all duration-300 flex items-center gap-2"
+                            >
+                                <LogIn size={18} />
+                                <span>Log In</span>
+                            </button>
                             <button
                                 type="button"
                                 onClick={() => setContactModalOpen(true)}
@@ -131,6 +197,18 @@ export default function Navbar() {
                                     {link.label}
                                 </Link>
                             ))}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setOpen(false);
+                                    setLoginModalOpen(true);
+                                }}
+                                className="block w-full mt-4 px-6 py-3 bg-white border-2 border-emerald-600 text-emerald-600 rounded-xl font-semibold
+                                         text-center hover:bg-emerald-50 transition-all duration-300 flex items-center justify-center gap-2"
+                            >
+                                <LogIn size={18} />
+                                <span>Log In</span>
+                            </button>
                             <button
                                 type="button"
                                 onClick={() => {
@@ -370,6 +448,143 @@ export default function Navbar() {
                                         </button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= LOGIN MODAL ================= */}
+            {loginModalOpen && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+                    onClick={() => setLoginModalOpen(false)}
+                >
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+                    {/* Modal Content */}
+                    <div
+                        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Close Button */}
+                        <button
+                            type="button"
+                            onClick={() => setLoginModalOpen(false)}
+                            className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 
+                                     flex items-center justify-center transition-colors text-slate-700 hover:text-slate-900"
+                            aria-label="Close modal"
+                        >
+                            <XIcon size={20} />
+                        </button>
+
+                        <div className="p-8 lg:p-12">
+                            <div className="mb-8">
+                                <h2 className="text-3xl font-bold text-slate-900 mb-2">
+                                    Sign In
+                                </h2>
+                                <p className="text-slate-600">
+                                    Enter your credentials to access your account
+                                </p>
+                            </div>
+
+                            <form onSubmit={handleLoginSubmit} className="space-y-6">
+                                {/* Email Field */}
+                                <div>
+                                    <label htmlFor="login-email" className="block text-sm font-semibold text-slate-900 mb-2">
+                                        Email Address
+                                    </label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                                        <input
+                                            type="email"
+                                            id="login-email"
+                                            name="email"
+                                            value={loginData.email}
+                                            onChange={handleLoginInputChange}
+                                            className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 transition-all outline-none text-slate-900
+                                                ${loginErrors.email 
+                                                    ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                                                    : "border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                                                }`}
+                                            placeholder="you@example.com"
+                                        />
+                                    </div>
+                                    {loginErrors.email && (
+                                        <p className="mt-2 text-sm text-red-600">{loginErrors.email}</p>
+                                    )}
+                                </div>
+
+                                {/* Password Field */}
+                                <div>
+                                    <label htmlFor="login-password" className="block text-sm font-semibold text-slate-900 mb-2">
+                                        Password
+                                    </label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            id="login-password"
+                                            name="password"
+                                            value={loginData.password}
+                                            onChange={handleLoginInputChange}
+                                            className={`w-full pl-12 pr-12 py-3 rounded-xl border-2 transition-all outline-none text-slate-900
+                                                ${loginErrors.password 
+                                                    ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                                                    : "border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                                                }`}
+                                            placeholder="Enter your password"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                            aria-label="Toggle password visibility"
+                                        >
+                                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
+                                    {loginErrors.password && (
+                                        <p className="mt-2 text-sm text-red-600">{loginErrors.password}</p>
+                                    )}
+                                </div>
+
+                                {/* Forgot Password */}
+                                <div className="flex items-center justify-end">
+                                    <Link
+                                        to="/forgot-password"
+                                        onClick={() => setLoginModalOpen(false)}
+                                        className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                                    >
+                                        Forgot password?
+                                    </Link>
+                                </div>
+
+                                {/* Submit Button */}
+                                <button
+                                    type="submit"
+                                    className="w-full px-6 py-4 bg-emerald-600 text-white rounded-xl font-semibold
+                                             hover:bg-emerald-700 transition-all duration-300 shadow-lg shadow-emerald-600/20
+                                             hover:shadow-xl hover:shadow-emerald-600/30 flex items-center justify-center gap-2"
+                                >
+                                    <span>Sign In</span>
+                                    <ArrowRight size={18} />
+                                </button>
+                            </form>
+
+                            {/* Sign Up Link */}
+                            <div className="mt-8 text-center pt-8 border-t border-slate-200">
+                                <p className="text-slate-600">
+                                    Don't have an account?{" "}
+                                    <Link
+                                        to="/signup"
+                                        onClick={() => setLoginModalOpen(false)}
+                                        className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                                    >
+                                        Sign up
+                                    </Link>
+                                </p>
                             </div>
                         </div>
                     </div>

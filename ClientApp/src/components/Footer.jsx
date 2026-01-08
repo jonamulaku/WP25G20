@@ -60,6 +60,20 @@ export default function Footer() {
                         <a href="#" aria-label="Instagram"><Instagram size={32} /></a>
                         <a href="#" aria-label="LinkedIn"><Linkedin size={32} /></a>
                     </div>
+
+                    {/* Sign Up Link */}
+                    <div className="mt-4 pt-4 border-t border-white/20">
+                        <p className="text-sm text-white/90 mb-2">
+                            New to our platform?
+                        </p>
+                        <Link
+                            to="/signup"
+                            className="inline-block px-6 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl font-semibold
+                                     transition-all duration-300 text-sm"
+                        >
+                            Create Account
+                        </Link>
+                    </div>
                 </div>
             </div>
         </footer>

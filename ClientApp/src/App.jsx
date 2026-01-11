@@ -8,8 +8,7 @@ import News from "./pages/News";
 import Projects from "./pages/Projects";
 import InnerProjectPage from "./pages/Inner-Project-Page";
 import AboutUs from "./pages/AboutUs";
-import Login from "./pages/Login";
-import SignUp from "./pages/SignUp";
+import Services from "./pages/Services";
 
 export default function App() {
     return (
@@ -70,13 +69,12 @@ export default function App() {
             />
 
             <Route
-                path="/login"
-                element={<Login />}
-            />
-
-            <Route
-                path="/signup"
-                element={<SignUp />}
+                path="/services"
+                element={
+                    <MainLayout>
+                        <Services />
+                    </MainLayout>
+                }
             />
 
         </Routes>

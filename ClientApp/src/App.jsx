@@ -7,6 +7,7 @@ import Team from "./pages/Team";
 import News from "./pages/News";
 import Projects from "./pages/Projects";
 import InnerProjectPage from "./pages/Inner-Project-Page";
+import AboutUs from "./pages/AboutUs";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 
@@ -55,6 +56,15 @@ export default function App() {
                 element={
                     <MainLayout>
                         <InnerProjectPage />
+                    </MainLayout>
+                }
+            />
+
+            <Route
+                path="/about"
+                element={
+                    <MainLayout>
+                        <AboutUs />
                     </MainLayout>
                 }
             />

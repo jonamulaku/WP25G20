@@ -108,6 +108,11 @@ export default function Footer() {
                                 </Link>
                             </li>
                             <li>
+                                <Link to="/about" className="text-emerald-50 hover:text-white transition-colors text-sm">
+                                    About Us
+                                </Link>
+                            </li>
+                            <li>
                                 <Link to="/team" className="text-emerald-50 hover:text-white transition-colors text-sm">
                                     Team
                                 </Link>
@@ -187,7 +192,7 @@ export default function Footer() {
                 <div className="border-t border-white/20 pt-8">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <p className="text-emerald-50 text-sm text-center md:text-left">
-                            © {new Date().getFullYear()} Marketing Agency. All rights reserved.
+                            ï¿½ {new Date().getFullYear()} Marketing Agency. All rights reserved.
                         </p>
                         <div className="flex gap-6 text-sm">
                             <Link to="/contact" className="text-emerald-50 hover:text-white transition-colors">

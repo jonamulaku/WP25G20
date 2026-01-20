@@ -6,8 +6,6 @@ import {
     Eye,
     EyeOff,
     User,
-    Building2,
-    Phone,
     ArrowRight,
     Sparkles,
     Shield,
@@ -15,13 +13,13 @@ import {
     Check
 } from "lucide-react";
 import Logo from "../assets/logos/Group.svg";
+import { authAPI } from "../services/api";
 
 export default function SignUp() {
     const [formData, setFormData] = useState({
-        fullName: "",
+        firstName: "",
+        lastName: "",
         email: "",
-        phone: "",
-        company: "",
         password: "",
         confirmPassword: "",
         agreeToTerms: false
@@ -29,6 +27,8 @@ export default function SignUp() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [errors, setErrors] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
+    const [submitError, setSubmitError] = useState("");
     const navigate = useNavigate();
 
     const handleInputChange = (e) => {
@@ -49,10 +49,16 @@ export default function SignUp() {
     const validateForm = () => {
         const newErrors = {};
 
-        if (!formData.fullName.trim()) {
-            newErrors.fullName = "Full name is required";
-        } else if (formData.fullName.trim().length < 2) {
-            newErrors.fullName = "Full name must be at least 2 characters";
+        if (!formData.firstName.trim()) {
+            newErrors.firstName = "First name is required";
+        } else if (formData.firstName.trim().length < 2) {
+            newErrors.firstName = "First name must be at least 2 characters";
+        }
+
+        if (!formData.lastName.trim()) {
+            newErrors.lastName = "Last name is required";
+        } else if (formData.lastName.trim().length < 2) {
+            newErrors.lastName = "Last name must be at least 2 characters";
         }
 
         if (!formData.email) {
@@ -61,22 +67,16 @@ export default function SignUp() {
             newErrors.email = "Email is invalid";
         }
 
-        if (!formData.phone) {
-            newErrors.phone = "Phone number is required";
-        } else if (!/^\+?[\d\s-()]+$/.test(formData.phone)) {
-            newErrors.phone = "Phone number is invalid";
-        }
-
-        if (!formData.company.trim()) {
-            newErrors.company = "Company name is required";
-        }
-
         if (!formData.password) {
             newErrors.password = "Password is required";
-        } else if (formData.password.length < 8) {
-            newErrors.password = "Password must be at least 8 characters";
-        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-            newErrors.password = "Password must contain uppercase, lowercase, and number";
+        } else if (formData.password.length < 6) {
+            newErrors.password = "Password must be at least 6 characters";
+        } else if (!/(?=.*[a-z])/.test(formData.password)) {
+            newErrors.password = "Password must contain at least one lowercase letter";
+        } else if (!/(?=.*[A-Z])/.test(formData.password)) {
+            newErrors.password = "Password must contain at least one uppercase letter";
+        } else if (!/(?=.*\d)/.test(formData.password)) {
+            newErrors.password = "Password must contain at least one digit";
         }
 
         if (!formData.confirmPassword) {
@@ -93,23 +93,36 @@ export default function SignUp() {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setSubmitError("");
         
         if (validateForm()) {
-            // Handle signup logic here
-            console.log("Signup attempt:", formData);
-            // In real app, you would make an API call here
-            alert("Account created successfully! Redirecting to login...");
-            navigate("/login");
+            setIsLoading(true);
+            try {
+                await authAPI.register(
+                    formData.email,
+                    formData.password,
+                    formData.confirmPassword,
+                    formData.firstName,
+                    formData.lastName
+                );
+                
+                // Success - redirect to home page
+                navigate("/");
+            } catch (error) {
+                setSubmitError(error.message || "Failed to create account. Please try again.");
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
     const passwordRequirements = [
-        { text: "At least 8 characters", met: formData.password.length >= 8 },
+        { text: "At least 6 characters", met: formData.password.length >= 6 },
         { text: "One uppercase letter", met: /[A-Z]/.test(formData.password) },
         { text: "One lowercase letter", met: /[a-z]/.test(formData.password) },
-        { text: "One number", met: /\d/.test(formData.password) }
+        { text: "One digit", met: /\d/.test(formData.password) }
     ];
 
     return (
@@ -203,29 +216,55 @@ export default function SignUp() {
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-5">
-                                {/* Full Name Field */}
+                                {/* First Name Field */}
                                 <div>
-                                    <label htmlFor="fullName" className="block text-sm font-semibold text-slate-900 mb-2">
-                                        Full Name *
+                                    <label htmlFor="firstName" className="block text-sm font-semibold text-slate-900 mb-2">
+                                        First Name *
                                     </label>
                                     <div className="relative">
                                         <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                                         <input
                                             type="text"
-                                            id="fullName"
-                                            name="fullName"
-                                            value={formData.fullName}
+                                            id="firstName"
+                                            name="firstName"
+                                            value={formData.firstName}
                                             onChange={handleInputChange}
                                             className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 transition-all outline-none text-slate-900
-                                                ${errors.fullName 
+                                                ${errors.firstName 
                                                     ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/20" 
                                                     : "border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                                                 }`}
-                                            placeholder="John Doe"
+                                            placeholder="John"
                                         />
                                     </div>
-                                    {errors.fullName && (
-                                        <p className="mt-2 text-sm text-red-600">{errors.fullName}</p>
+                                    {errors.firstName && (
+                                        <p className="mt-2 text-sm text-red-600">{errors.firstName}</p>
+                                    )}
+                                </div>
+
+                                {/* Last Name Field */}
+                                <div>
+                                    <label htmlFor="lastName" className="block text-sm font-semibold text-slate-900 mb-2">
+                                        Last Name *
+                                    </label>
+                                    <div className="relative">
+                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                                        <input
+                                            type="text"
+                                            id="lastName"
+                                            name="lastName"
+                                            value={formData.lastName}
+                                            onChange={handleInputChange}
+                                            className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 transition-all outline-none text-slate-900
+                                                ${errors.lastName 
+                                                    ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/20" 
+                                                    : "border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                                                }`}
+                                            placeholder="Doe"
+                                        />
+                                    </div>
+                                    {errors.lastName && (
+                                        <p className="mt-2 text-sm text-red-600">{errors.lastName}</p>
                                     )}
                                 </div>
 
@@ -255,57 +294,6 @@ export default function SignUp() {
                                     )}
                                 </div>
 
-                                {/* Phone Field */}
-                                <div>
-                                    <label htmlFor="phone" className="block text-sm font-semibold text-slate-900 mb-2">
-                                        Phone Number *
-                                    </label>
-                                    <div className="relative">
-                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                                        <input
-                                            type="tel"
-                                            id="phone"
-                                            name="phone"
-                                            value={formData.phone}
-                                            onChange={handleInputChange}
-                                            className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 transition-all outline-none text-slate-900
-                                                ${errors.phone 
-                                                    ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/20" 
-                                                    : "border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                                                }`}
-                                            placeholder="+44 7700 900000"
-                                        />
-                                    </div>
-                                    {errors.phone && (
-                                        <p className="mt-2 text-sm text-red-600">{errors.phone}</p>
-                                    )}
-                                </div>
-
-                                {/* Company Field */}
-                                <div>
-                                    <label htmlFor="company" className="block text-sm font-semibold text-slate-900 mb-2">
-                                        Company Name *
-                                    </label>
-                                    <div className="relative">
-                                        <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                                        <input
-                                            type="text"
-                                            id="company"
-                                            name="company"
-                                            value={formData.company}
-                                            onChange={handleInputChange}
-                                            className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 transition-all outline-none text-slate-900
-                                                ${errors.company 
-                                                    ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/20" 
-                                                    : "border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                                                }`}
-                                            placeholder="Your Company Ltd"
-                                        />
-                                    </div>
-                                    {errors.company && (
-                                        <p className="mt-2 text-sm text-red-600">{errors.company}</p>
-                                    )}
-                                </div>
 
                                 {/* Password Field */}
                                 <div>
@@ -416,15 +404,24 @@ export default function SignUp() {
                                     )}
                                 </div>
 
+                                {/* Submit Error */}
+                                {submitError && (
+                                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                                        <p className="text-sm text-red-600">{submitError}</p>
+                                    </div>
+                                )}
+
                                 {/* Submit Button */}
                                 <button
                                     type="submit"
+                                    disabled={isLoading}
                                     className="w-full px-6 py-4 bg-emerald-600 text-white rounded-xl font-semibold
                                              hover:bg-emerald-700 transition-all duration-300 shadow-lg shadow-emerald-600/20
-                                             hover:shadow-xl hover:shadow-emerald-600/30 flex items-center justify-center gap-2 mt-6"
+                                             hover:shadow-xl hover:shadow-emerald-600/30 flex items-center justify-center gap-2 mt-6
+                                             disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <span>Create Account</span>
-                                    <ArrowRight size={18} />
+                                    <span>{isLoading ? "Creating Account..." : "Create Account"}</span>
+                                    {!isLoading && <ArrowRight size={18} />}
                                 </button>
                             </form>
 

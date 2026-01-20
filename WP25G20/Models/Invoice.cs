@@ -44,6 +44,7 @@ namespace WP25G20.Models
         public virtual Client Client { get; set; } = null!;
         public virtual Campaign? Campaign { get; set; }
         public virtual ApplicationUser? CreatedBy { get; set; }
+        public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
     }
     
     public enum InvoiceStatus

@@ -18,6 +18,7 @@ namespace WP25G20.Data
         public DbSet<Campaign> Campaigns { get; set; }
         public DbSet<TaskModel> Tasks { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
+        public DbSet<Payment> Payments { get; set; }
         public DbSet<CampaignUser> CampaignUsers { get; set; }
         public DbSet<TaskFile> TaskFiles { get; set; }
         public DbSet<TaskComment> TaskComments { get; set; }
@@ -89,6 +90,20 @@ namespace WP25G20.Data
                 entity.HasOne(e => e.CreatedBy)
                     .WithMany()
                     .HasForeignKey(e => e.CreatedById)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            builder.Entity<Payment>(entity =>
+            {
+                entity.HasIndex(e => e.PaymentNumber).IsUnique();
+                entity.HasOne(e => e.Invoice)
+                    .WithMany(i => i.Payments)
+                    .HasForeignKey(e => e.InvoiceId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.ProcessedBy)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProcessedById)
                     .OnDelete(DeleteBehavior.SetNull);
             });
 

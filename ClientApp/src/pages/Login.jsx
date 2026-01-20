@@ -11,6 +11,7 @@ import {
     CheckCircle2
 } from "lucide-react";
 import Logo from "../assets/logos/Group.svg";
+import { authAPI } from "../services/api";
 
 export default function Login() {
     const [formData, setFormData] = useState({
@@ -20,6 +21,8 @@ export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [errors, setErrors] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
+    const [submitError, setSubmitError] = useState("");
     const navigate = useNavigate();
 
     const handleInputChange = (e) => {
@@ -50,22 +53,39 @@ export default function Login() {
             newErrors.password = "Password is required";
         } else if (formData.password.length < 6) {
             newErrors.password = "Password must be at least 6 characters";
+        } else if (!/(?=.*[a-z])/.test(formData.password)) {
+            newErrors.password = "Password must contain at least one lowercase letter";
+        } else if (!/(?=.*[A-Z])/.test(formData.password)) {
+            newErrors.password = "Password must contain at least one uppercase letter";
+        } else if (!/(?=.*\d)/.test(formData.password)) {
+            newErrors.password = "Password must contain at least one digit";
         }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setSubmitError("");
         
         if (validateForm()) {
-            // Handle login logic here
-            console.log("Login attempt:", formData);
-            // In real app, you would make an API call here
-            // For now, just navigate to dashboard
-            alert("Login successful! Redirecting...");
-            navigate("/");
+            setIsLoading(true);
+            try {
+                const response = await authAPI.login(formData.email, formData.password);
+                console.log('Login successful:', response);
+                
+                // Small delay to ensure state is updated
+                setTimeout(() => {
+                    // Success - redirect to home page
+                    navigate("/");
+                }, 100);
+            } catch (error) {
+                console.error('Login error:', error);
+                setSubmitError(error.message || "Invalid email or password. Please try again.");
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -239,15 +259,24 @@ export default function Login() {
                                     </Link>
                                 </div>
 
+                                {/* Submit Error */}
+                                {submitError && (
+                                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                                        <p className="text-sm text-red-600">{submitError}</p>
+                                    </div>
+                                )}
+
                                 {/* Submit Button */}
                                 <button
                                     type="submit"
+                                    disabled={isLoading}
                                     className="w-full px-6 py-4 bg-emerald-600 text-white rounded-xl font-semibold
                                              hover:bg-emerald-700 transition-all duration-300 shadow-lg shadow-emerald-600/20
-                                             hover:shadow-xl hover:shadow-emerald-600/30 flex items-center justify-center gap-2"
+                                             hover:shadow-xl hover:shadow-emerald-600/30 flex items-center justify-center gap-2
+                                             disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <span>Sign In</span>
-                                    <ArrowRight size={18} />
+                                    <span>{isLoading ? "Signing In..." : "Sign In"}</span>
+                                    {!isLoading && <ArrowRight size={18} />}
                                 </button>
                             </form>
 

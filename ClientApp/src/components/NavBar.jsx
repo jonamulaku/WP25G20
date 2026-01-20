@@ -1,12 +1,15 @@
-import { useState } from "react";
-import { Menu, X, Mail, Phone, MapPin, Send, X as XIcon, Lock, Eye, EyeOff, ArrowRight, LogIn } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu, X, Mail, Phone, MapPin, Send, X as XIcon, Lock, Eye, EyeOff, ArrowRight, LogIn, LogOut } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Logo from "../assets/logos/Group.svg";
+import { authAPI } from "../services/api";
 
 export default function Navbar() {
     const [open, setOpen] = useState(false);
     const [contactModalOpen, setContactModalOpen] = useState(false);
     const [loginModalOpen, setLoginModalOpen] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [userInfo, setUserInfo] = useState(null);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -21,8 +24,52 @@ export default function Navbar() {
     });
     const [showPassword, setShowPassword] = useState(false);
     const [loginErrors, setLoginErrors] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
+    const [submitError, setSubmitError] = useState("");
     const location = useLocation();
     const navigate = useNavigate();
+
+    // Check authentication status on mount and when location changes
+    useEffect(() => {
+        const checkAuth = () => {
+            const authenticated = authAPI.isAuthenticated();
+            const user = authAPI.getCurrentUser();
+            console.log('NavBar auth check:', { authenticated, user });
+            setIsAuthenticated(authenticated);
+            if (authenticated) {
+                setUserInfo(user);
+            } else {
+                setUserInfo(null);
+            }
+        };
+        
+        checkAuth();
+        
+        // Listen for storage changes (e.g., when login happens in another tab)
+        const handleStorageChange = (e) => {
+            if (e.key === 'authToken' || e.key === 'userInfo') {
+                checkAuth();
+            }
+        };
+        
+        window.addEventListener('storage', handleStorageChange);
+        
+        // Listen for custom auth events (when login/logout happens in same tab)
+        const handleAuthChange = () => {
+            checkAuth();
+        };
+        
+        window.addEventListener('authChange', handleAuthChange);
+        
+        // Also check periodically (as fallback) - but less frequently
+        const interval = setInterval(checkAuth, 2000);
+        
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('authChange', handleAuthChange);
+            clearInterval(interval);
+        };
+    }, [location]);
 
     const navLinks = [
         { path: "/", label: "Home" },
@@ -94,19 +141,33 @@ export default function Navbar() {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleLoginSubmit = (e) => {
+    const handleLoginSubmit = async (e) => {
         e.preventDefault();
+        setSubmitError("");
         
         if (validateLoginForm()) {
-            // Handle login logic here
-            console.log("Login attempt:", loginData);
-            // In real app, you would make an API call here
-            alert("Login successful! Redirecting...");
-            setLoginData({ email: "", password: "" });
-            setLoginModalOpen(false);
-            // Navigate to dashboard or home
-            navigate("/");
+            setIsLoading(true);
+            try {
+                await authAPI.login(loginData.email, loginData.password);
+                setLoginData({ email: "", password: "" });
+                setLoginModalOpen(false);
+                setIsAuthenticated(true);
+                setUserInfo(authAPI.getCurrentUser());
+                // Navigate to home
+                navigate("/");
+            } catch (error) {
+                setSubmitError(error.message || "Invalid email or password. Please try again.");
+            } finally {
+                setIsLoading(false);
+            }
         }
+    };
+
+    const handleLogout = () => {
+        authAPI.logout();
+        setIsAuthenticated(false);
+        setUserInfo(null);
+        navigate("/");
     };
 
     return (
@@ -145,17 +206,46 @@ export default function Navbar() {
                             </Link>
                         </div>
 
-                        {/* LOGIN & CONTACT BUTTONS - Desktop */}
+                        {/* LOGIN/LOGOUT & CONTACT BUTTONS - Desktop */}
                         <div className="hidden lg:flex items-center gap-4 flex-1 justify-end">
-                            <button
-                                type="button"
-                                onClick={() => setLoginModalOpen(true)}
-                                className="px-6 py-2.5 bg-white border-2 border-emerald-600 text-emerald-600 rounded-xl font-semibold
-                                         hover:bg-emerald-50 transition-all duration-300 flex items-center gap-2"
-                            >
-                                <LogIn size={18} />
-                                <span>Log In</span>
-                            </button>
+                            {isAuthenticated ? (
+                                <>
+                                    {userInfo && (
+                                        <span className="text-slate-700 font-medium text-sm">
+                                            {userInfo.firstName} {userInfo.lastName}
+                                        </span>
+                                    )}
+                                    {userInfo && userInfo.roles && Array.isArray(userInfo.roles) && userInfo.roles.includes('Admin') && (
+                                        <Link
+                                            to="/dashboard"
+                                            className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold
+                                                     hover:bg-emerald-700 transition-all duration-300 shadow-lg shadow-emerald-600/20
+                                                     hover:shadow-xl hover:shadow-emerald-600/30"
+                                        >
+                                            Dashboard
+                                        </Link>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={handleLogout}
+                                        className="px-6 py-2.5 bg-white border-2 border-red-500 text-red-600 rounded-xl font-semibold
+                                                 hover:bg-red-50 transition-all duration-300 flex items-center gap-2"
+                                    >
+                                        <LogOut size={18} />
+                                        <span>Log Out</span>
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setLoginModalOpen(true)}
+                                    className="px-6 py-2.5 bg-white border-2 border-emerald-600 text-emerald-600 rounded-xl font-semibold
+                                             hover:bg-emerald-50 transition-all duration-300 flex items-center gap-2"
+                                >
+                                    <LogIn size={18} />
+                                    <span>Log In</span>
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 onClick={() => setContactModalOpen(true)}
@@ -199,18 +289,50 @@ export default function Navbar() {
                                     {link.label}
                                 </Link>
                             ))}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setOpen(false);
-                                    setLoginModalOpen(true);
-                                }}
-                                className="block w-full mt-4 px-6 py-3 bg-white border-2 border-emerald-600 text-emerald-600 rounded-xl font-semibold
-                                         text-center hover:bg-emerald-50 transition-all duration-300 flex items-center justify-center gap-2"
-                            >
-                                <LogIn size={18} />
-                                <span>Log In</span>
-                            </button>
+                            {isAuthenticated ? (
+                                <>
+                                    {userInfo && (
+                                        <div className="block w-full mt-4 px-6 py-3 text-slate-700 text-center font-medium">
+                                            {userInfo.firstName} {userInfo.lastName}
+                                        </div>
+                                    )}
+                                    {userInfo && userInfo.roles && Array.isArray(userInfo.roles) && userInfo.roles.includes('Admin') && (
+                                        <Link
+                                            to="/dashboard"
+                                            onClick={() => setOpen(false)}
+                                            className="block w-full mt-4 px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold
+                                                     text-center hover:bg-emerald-700 transition-all duration-300"
+                                        >
+                                            Dashboard
+                                        </Link>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setOpen(false);
+                                            handleLogout();
+                                        }}
+                                        className="block w-full mt-4 px-6 py-3 bg-white border-2 border-red-500 text-red-600 rounded-xl font-semibold
+                                                 text-center hover:bg-red-50 transition-all duration-300 flex items-center justify-center gap-2"
+                                    >
+                                        <LogOut size={18} />
+                                        <span>Log Out</span>
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setOpen(false);
+                                        setLoginModalOpen(true);
+                                    }}
+                                    className="block w-full mt-4 px-6 py-3 bg-white border-2 border-emerald-600 text-emerald-600 rounded-xl font-semibold
+                                             text-center hover:bg-emerald-50 transition-all duration-300 flex items-center justify-center gap-2"
+                                >
+                                    <LogIn size={18} />
+                                    <span>Log In</span>
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 onClick={() => {
@@ -563,15 +685,24 @@ export default function Navbar() {
                                     </Link>
                                 </div>
 
+                                {/* Submit Error */}
+                                {submitError && (
+                                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                                        <p className="text-sm text-red-600">{submitError}</p>
+                                    </div>
+                                )}
+
                                 {/* Submit Button */}
                                 <button
                                     type="submit"
+                                    disabled={isLoading}
                                     className="w-full px-6 py-4 bg-emerald-600 text-white rounded-xl font-semibold
                                              hover:bg-emerald-700 transition-all duration-300 shadow-lg shadow-emerald-600/20
-                                             hover:shadow-xl hover:shadow-emerald-600/30 flex items-center justify-center gap-2"
+                                             hover:shadow-xl hover:shadow-emerald-600/30 flex items-center justify-center gap-2
+                                             disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <span>Sign In</span>
-                                    <ArrowRight size={18} />
+                                    <span>{isLoading ? "Signing In..." : "Sign In"}</span>
+                                    {!isLoading && <ArrowRight size={18} />}
                                 </button>
                             </form>
 

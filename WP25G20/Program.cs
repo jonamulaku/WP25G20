@@ -260,6 +260,7 @@ if (app.Environment.IsDevelopment())
     {
         await SeedData.SeedRolesAndAdminAsync(scope.ServiceProvider);
         await SeedData.SeedTeamMembersAsync(scope.ServiceProvider);
+        await SeedData.SeedSampleDataAsync(scope.ServiceProvider);
     }
 }
 

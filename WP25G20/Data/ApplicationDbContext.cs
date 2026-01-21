@@ -23,6 +23,7 @@ namespace WP25G20.Data
         public DbSet<TaskFile> TaskFiles { get; set; }
         public DbSet<TaskComment> TaskComments { get; set; }
         public DbSet<ActivityLog> ActivityLogs { get; set; }
+        public DbSet<TeamMember> TeamMembers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -56,12 +57,22 @@ namespace WP25G20.Data
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
+            builder.Entity<TeamMember>(entity =>
+            {
+                entity.HasIndex(e => e.Email).IsUnique();
+            });
+
             builder.Entity<TaskModel>(entity =>
             {
                 entity.HasOne(e => e.Campaign)
                     .WithMany(c => c.Tasks)
                     .HasForeignKey(e => e.CampaignId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.AssignedToTeamMember)
+                    .WithMany(tm => tm.AssignedTasks)
+                    .HasForeignKey(e => e.AssignedToTeamMemberId)
+                    .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasOne(e => e.AssignedTo)
                     .WithMany(u => u.AssignedTasks)

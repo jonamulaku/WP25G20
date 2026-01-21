@@ -9,7 +9,12 @@ namespace WP25G20.DTOs
         public string? Description { get; set; }
         public int CampaignId { get; set; }
         public string CampaignName { get; set; } = string.Empty;
+        public int? AssignedToTeamMemberId { get; set; }
+        public string? AssignedToTeamMemberName { get; set; }
+        public string? AssignedToTeamMemberRole { get; set; }
+        [Obsolete("Use AssignedToTeamMemberId instead")]
         public string? AssignedToId { get; set; }
+        [Obsolete("Use AssignedToTeamMemberName instead")]
         public string? AssignedToName { get; set; }
         public DateTime? DueDate { get; set; }
         public string Priority { get; set; } = string.Empty;
@@ -33,6 +38,9 @@ namespace WP25G20.DTOs
         [Required]
         public int CampaignId { get; set; }
 
+        public int? AssignedToTeamMemberId { get; set; }
+        
+        [Obsolete("Use AssignedToTeamMemberId instead")]
         public string? AssignedToId { get; set; }
 
         public DateTime? DueDate { get; set; }
@@ -54,6 +62,9 @@ namespace WP25G20.DTOs
         [StringLength(2000)]
         public string? Description { get; set; }
 
+        public int? AssignedToTeamMemberId { get; set; }
+        
+        [Obsolete("Use AssignedToTeamMemberId instead")]
         public string? AssignedToId { get; set; }
 
         public DateTime? DueDate { get; set; }

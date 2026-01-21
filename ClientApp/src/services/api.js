@@ -50,6 +50,12 @@ const apiCall = async (endpoint, options = {}) => {
             headers,
         });
 
+        // Handle no-content responses (e.g. 204 from DELETE)
+        if (response.status === 204) {
+            // Successful with no body
+            return null;
+        }
+
         // Check if response has content before trying to parse JSON
         let data;
         const contentType = response.headers.get('content-type');
@@ -63,7 +69,12 @@ const apiCall = async (endpoint, options = {}) => {
         } else {
             // If not JSON, read as text
             const text = await response.text();
-            throw new Error(text || `HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                // Only treat as error if status is not OK
+                throw new Error(text || `HTTP error! status: ${response.status}`);
+            }
+            // For successful non-JSON with body, just return raw text
+            return text || null;
         }
 
         if (!response.ok) {
@@ -179,6 +190,290 @@ export const authAPI = {
 
     isAuthenticated: () => {
         return !!getAuthToken();
+    },
+};
+
+// Helper to normalize DTOs (backend returns PascalCase, frontend expects camelCase)
+const normalizeDTO = (dto) => {
+    if (!dto || typeof dto !== 'object') return dto;
+    
+    const normalized = {};
+    for (const [key, value] of Object.entries(dto)) {
+        // Convert PascalCase to camelCase
+        const camelKey = key.charAt(0).toLowerCase() + key.slice(1);
+        
+        if (Array.isArray(value)) {
+            normalized[camelKey] = value.map(item => 
+                typeof item === 'object' ? normalizeDTO(item) : item
+            );
+        } else if (value && typeof value === 'object' && !(value instanceof Date)) {
+            normalized[camelKey] = normalizeDTO(value);
+        } else {
+            normalized[camelKey] = value;
+        }
+    }
+    return normalized;
+};
+
+// Clients API
+export const clientsAPI = {
+    getAll: async (filter = {}) => {
+        const params = new URLSearchParams();
+        if (filter.searchTerm) params.append('searchTerm', filter.searchTerm);
+        if (filter.pageNumber) params.append('pageNumber', filter.pageNumber);
+        if (filter.pageSize) params.append('pageSize', filter.pageSize);
+        if (filter.sortBy) params.append('sortBy', filter.sortBy);
+        if (filter.sortDescending) params.append('sortDescending', filter.sortDescending);
+        
+        const response = await apiCall(`/clients?${params.toString()}`);
+        return {
+            ...response,
+            items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || []
+        };
+    },
+    
+    getById: async (id) => {
+        const response = await apiCall(`/clients/${id}`);
+        return normalizeDTO(response);
+    },
+    
+    create: async (data) => {
+        const response = await apiCall('/clients', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    update: async (id, data) => {
+        const response = await apiCall(`/clients/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    delete: async (id) => {
+        await apiCall(`/clients/${id}`, {
+            method: 'DELETE',
+        });
+    },
+};
+
+// Campaigns API
+export const campaignsAPI = {
+    getAll: async (filter = {}) => {
+        const params = new URLSearchParams();
+        if (filter.searchTerm) params.append('searchTerm', filter.searchTerm);
+        if (filter.pageNumber) params.append('pageNumber', filter.pageNumber);
+        if (filter.pageSize) params.append('pageSize', filter.pageSize);
+        if (filter.sortBy) params.append('sortBy', filter.sortBy);
+        if (filter.sortDescending) params.append('sortDescending', filter.sortDescending);
+        
+        const response = await apiCall(`/campaigns?${params.toString()}`);
+        return {
+            ...response,
+            items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || []
+        };
+    },
+    
+    getById: async (id) => {
+        const response = await apiCall(`/campaigns/${id}`);
+        return normalizeDTO(response);
+    },
+    
+    create: async (data) => {
+        const response = await apiCall('/campaigns', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    update: async (id, data) => {
+        const response = await apiCall(`/campaigns/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    delete: async (id) => {
+        await apiCall(`/campaigns/${id}`, {
+            method: 'DELETE',
+        });
+    },
+};
+
+// Tasks API
+export const tasksAPI = {
+    getAll: async (filter = {}) => {
+        const params = new URLSearchParams();
+        if (filter.searchTerm) params.append('searchTerm', filter.searchTerm);
+        if (filter.pageNumber) params.append('pageNumber', filter.pageNumber);
+        if (filter.pageSize) params.append('pageSize', filter.pageSize);
+        if (filter.sortBy) params.append('sortBy', filter.sortBy);
+        if (filter.sortDescending) params.append('sortDescending', filter.sortDescending);
+        
+        const response = await apiCall(`/tasks?${params.toString()}`);
+        return {
+            ...response,
+            items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || []
+        };
+    },
+    
+    getMyTasks: async (filter = {}) => {
+        const params = new URLSearchParams();
+        if (filter.searchTerm) params.append('searchTerm', filter.searchTerm);
+        if (filter.pageNumber) params.append('pageNumber', filter.pageNumber);
+        if (filter.pageSize) params.append('pageSize', filter.pageSize);
+        
+        const response = await apiCall(`/tasks/me?${params.toString()}`);
+        return {
+            ...response,
+            items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || []
+        };
+    },
+    
+    getById: async (id) => {
+        const response = await apiCall(`/tasks/${id}`);
+        return normalizeDTO(response);
+    },
+    
+    create: async (data) => {
+        const response = await apiCall('/tasks', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    update: async (id, data) => {
+        const response = await apiCall(`/tasks/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    delete: async (id) => {
+        await apiCall(`/tasks/${id}`, {
+            method: 'DELETE',
+        });
+    },
+};
+
+// Services API
+export const servicesAPI = {
+    getAll: async (filter = {}) => {
+        const params = new URLSearchParams();
+        if (filter.searchTerm) params.append('searchTerm', filter.searchTerm);
+        if (filter.pageNumber) params.append('pageNumber', filter.pageNumber);
+        if (filter.pageSize) params.append('pageSize', filter.pageSize);
+        
+        const response = await apiCall(`/services?${params.toString()}`);
+        return {
+            ...response,
+            items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || []
+        };
+    },
+    
+    getById: async (id) => {
+        const response = await apiCall(`/services/${id}`);
+        return normalizeDTO(response);
+    },
+    
+    create: async (data) => {
+        const response = await apiCall('/services', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    update: async (id, data) => {
+        const response = await apiCall(`/services/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    delete: async (id) => {
+        await apiCall(`/services/${id}`, {
+            method: 'DELETE',
+        });
+    },
+};
+
+// Users API
+export const usersAPI = {
+    getAll: async (filter = {}) => {
+        const params = new URLSearchParams();
+        if (filter.searchTerm) params.append('searchTerm', filter.searchTerm);
+        if (filter.pageNumber) params.append('pageNumber', filter.pageNumber);
+        if (filter.pageSize) params.append('pageSize', filter.pageSize);
+        
+        const response = await apiCall(`/users?${params.toString()}`);
+        return {
+            ...response,
+            items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || []
+        };
+    },
+    
+    getById: async (id) => {
+        const response = await apiCall(`/users/${id}`);
+        return normalizeDTO(response);
+    },
+    
+    getMe: async () => {
+        const response = await apiCall('/users/me');
+        return normalizeDTO(response);
+    },
+};
+
+// Team Members API
+export const teamMembersAPI = {
+    getAll: async (filter = {}) => {
+        const params = new URLSearchParams();
+        if (filter.searchTerm) params.append('searchTerm', filter.searchTerm);
+        if (filter.pageNumber) params.append('pageNumber', filter.pageNumber);
+        if (filter.pageSize) params.append('pageSize', filter.pageSize);
+        if (filter.sortBy) params.append('sortBy', filter.sortBy);
+        if (filter.sortDescending) params.append('sortDescending', filter.sortDescending);
+        
+        const response = await apiCall(`/teammembers?${params.toString()}`);
+        return {
+            ...response,
+            items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || []
+        };
+    },
+    
+    getById: async (id) => {
+        const response = await apiCall(`/teammembers/${id}`);
+        return normalizeDTO(response);
+    },
+    
+    create: async (data) => {
+        const response = await apiCall('/teammembers', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    update: async (id, data) => {
+        const response = await apiCall(`/teammembers/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    delete: async (id) => {
+        await apiCall(`/teammembers/${id}`, {
+            method: 'DELETE',
+        });
     },
 };
 

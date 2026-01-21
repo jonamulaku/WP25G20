@@ -72,6 +72,7 @@ builder.Services.AddScoped<IServiceRepository, ServiceRepository>();
 builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
+builder.Services.AddScoped<ITeamMemberRepository, TeamMemberRepository>();
 
 // =========================================
 // SERVICES (Dependency Injection)
@@ -84,6 +85,7 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITeamMemberService, TeamMemberService>();
 builder.Services.AddScoped<IAuthorizationHelper, AuthorizationHelper>();
 
 // =========================================
@@ -257,6 +259,7 @@ if (app.Environment.IsDevelopment())
     using (var scope = app.Services.CreateScope())
     {
         await SeedData.SeedRolesAndAdminAsync(scope.ServiceProvider);
+        await SeedData.SeedTeamMembersAsync(scope.ServiceProvider);
     }
 }
 

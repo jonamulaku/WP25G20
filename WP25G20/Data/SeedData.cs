@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using WP25G20.Models;
 
 namespace WP25G20.Data
@@ -113,6 +114,62 @@ namespace WP25G20.Data
                     await userManager.AddToRoleAsync(clientUser, "Client");
                 }
             }
+        }
+
+        public static async System.Threading.Tasks.Task SeedTeamMembersAsync(IServiceProvider serviceProvider)
+        {
+            var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var teamMembers = new[]
+            {
+                new TeamMember
+                {
+                    FirstName = "Alex",
+                    LastName = "Martinez",
+                    Email = "alex.martinez@marketingagency.com",
+                    Role = "Digital Marketing Specialist",
+                    Description = "Handles both paid advertising (Google Ads, Facebook/Instagram Ads) and organic social media management. Ensures that campaigns are optimized for lead generation, engagement, and ROI.",
+                    Phone = "+1 555-0101",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new TeamMember
+                {
+                    FirstName = "Sarah",
+                    LastName = "Chen",
+                    Email = "sarah.chen@marketingagency.com",
+                    Role = "Graphic Designer",
+                    Description = "Creates all visual assets for campaigns, social media, and advertisements. Ensures the designs align with the brand's identity and appeal to the target audience.",
+                    Phone = "+1 555-0102",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new TeamMember
+                {
+                    FirstName = "Michael",
+                    LastName = "Thompson",
+                    Email = "michael.thompson@marketingagency.com",
+                    Role = "Campaign Manager",
+                    Description = "Oversees the execution and optimization of marketing campaigns across all channels. Ensures everything runs smoothly, from strategy to implementation, and provides ongoing campaign performance reports.",
+                    Phone = "+1 555-0103",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            foreach (var teamMember in teamMembers)
+            {
+                var exists = await context.TeamMembers
+                    .AnyAsync(tm => tm.Email == teamMember.Email);
+
+                if (!exists)
+                {
+                    context.TeamMembers.Add(teamMember);
+                    Console.WriteLine($"Team member created: {teamMember.FirstName} {teamMember.LastName} - {teamMember.Role}");
+                }
+            }
+
+            await context.SaveChangesAsync();
         }
     }
 }

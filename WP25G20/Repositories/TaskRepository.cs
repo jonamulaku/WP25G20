@@ -20,6 +20,7 @@ namespace WP25G20.Repositories
             return await _context.Tasks
                 .Include(t => t.Campaign)
                     .ThenInclude(c => c.Client)
+                .Include(t => t.AssignedToTeamMember)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.CreatedBy)
                 .OrderByDescending(t => t.CreatedAt)
@@ -31,6 +32,7 @@ namespace WP25G20.Repositories
             return await _context.Tasks
                 .Include(t => t.Campaign)
                     .ThenInclude(c => c.Client)
+                .Include(t => t.AssignedToTeamMember)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.CreatedBy)
                 .FirstOrDefaultAsync(t => t.Id == id);
@@ -41,6 +43,7 @@ namespace WP25G20.Repositories
             return await _context.Tasks
                 .Include(t => t.Campaign)
                     .ThenInclude(c => c.Client)
+                .Include(t => t.AssignedToTeamMember)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.CreatedBy)
                 .Include(t => t.TaskFiles)
@@ -53,6 +56,7 @@ namespace WP25G20.Repositories
         {
             return await _context.Tasks
                 .Where(t => t.CampaignId == campaignId)
+                .Include(t => t.AssignedToTeamMember)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.CreatedBy)
                 .OrderByDescending(t => t.CreatedAt)
@@ -76,6 +80,7 @@ namespace WP25G20.Repositories
                 .Where(t => t.Status == TaskStatus.Pending || t.Status == TaskStatus.InProgress)
                 .Include(t => t.Campaign)
                     .ThenInclude(c => c.Client)
+                .Include(t => t.AssignedToTeamMember)
                 .Include(t => t.AssignedTo)
                 .OrderBy(t => t.DueDate)
                 .ToListAsync();
@@ -124,6 +129,7 @@ namespace WP25G20.Repositories
                            t.Campaign.Name.Contains(searchTerm))
                 .Include(t => t.Campaign)
                     .ThenInclude(c => c.Client)
+                .Include(t => t.AssignedToTeamMember)
                 .Include(t => t.AssignedTo)
                 .OrderByDescending(t => t.CreatedAt)
                 .ToListAsync();

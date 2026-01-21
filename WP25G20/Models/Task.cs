@@ -17,6 +17,9 @@ namespace WP25G20.Models
         [Required]
         public int CampaignId { get; set; }
         
+        public int? AssignedToTeamMemberId { get; set; }
+        
+        [Obsolete("Use AssignedToTeamMemberId instead")]
         public string? AssignedToId { get; set; }
         
         public DateTime? DueDate { get; set; }
@@ -37,6 +40,8 @@ namespace WP25G20.Models
         
         // Navigation properties
         public virtual Campaign Campaign { get; set; } = null!;
+        public virtual TeamMember? AssignedToTeamMember { get; set; }
+        [Obsolete("Use AssignedToTeamMember instead")]
         public virtual ApplicationUser? AssignedTo { get; set; }
         public virtual ApplicationUser? CreatedBy { get; set; }
         public virtual ICollection<TaskFile> TaskFiles { get; set; } = new List<TaskFile>();

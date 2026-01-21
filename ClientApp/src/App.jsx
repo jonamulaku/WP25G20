@@ -3,6 +3,7 @@
 import MainLayout from "./layouts/MainLayout";
 import DashboardLayout from "./layouts/DashboardLayout";
 import ClientDashboardLayout from "./layouts/ClientDashboardLayout";
+import TeamMemberDashboardLayout from "./layouts/TeamMemberDashboardLayout";
 
 import Home from "./pages/Home";
 import Team from "./pages/Team";
@@ -32,6 +33,16 @@ import FilesAssets from "./pages/client-dashboard/FilesAssets";
 import Messages from "./pages/client-dashboard/Messages";
 import BillingInvoices from "./pages/client-dashboard/BillingInvoices";
 import AccountSettings from "./pages/client-dashboard/AccountSettings";
+
+import TeamDashboard from "./pages/team-dashboard/Dashboard";
+import MyTasks from "./pages/team-dashboard/MyTasks";
+import TeamCampaigns from "./pages/team-dashboard/Campaigns";
+import Performance from "./pages/team-dashboard/Performance";
+import TeamCalendar from "./pages/team-dashboard/Calendar";
+import TeamFilesAssets from "./pages/team-dashboard/FilesAssets";
+import Communication from "./pages/team-dashboard/Communication";
+import ActivityTime from "./pages/team-dashboard/ActivityTime";
+import ProfileSettings from "./pages/team-dashboard/ProfileSettings";
 
 export default function App() {
     return (
@@ -143,6 +154,22 @@ export default function App() {
                 <Route path="messages" element={<Messages />} />
                 <Route path="billing" element={<BillingInvoices />} />
                 <Route path="settings" element={<AccountSettings />} />
+            </Route>
+
+            {/* Team Member Dashboard Routes */}
+            <Route
+                path="/team-dashboard"
+                element={<TeamMemberDashboardLayout />}
+            >
+                <Route index element={<TeamDashboard />} />
+                <Route path="tasks" element={<MyTasks />} />
+                <Route path="campaigns" element={<TeamCampaigns />} />
+                <Route path="performance" element={<Performance />} />
+                <Route path="calendar" element={<TeamCalendar />} />
+                <Route path="files" element={<TeamFilesAssets />} />
+                <Route path="communication" element={<Communication />} />
+                <Route path="activity" element={<ActivityTime />} />
+                <Route path="profile" element={<ProfileSettings />} />
             </Route>
 
         </Routes>

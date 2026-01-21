@@ -80,10 +80,13 @@ export default function Login() {
                     // Redirect based on user role
                     const user = authAPI.getCurrentUser();
                     if (user && user.roles) {
-                        if (user.roles.includes('Client')) {
-                            navigate("/client-dashboard");
-                        } else if (user.roles.includes('Admin')) {
+                        if (user.roles.includes('Admin')) {
                             navigate("/dashboard");
+                        } else if (user.roles.includes('Client')) {
+                            navigate("/client-dashboard");
+                        } else if (user.roles.includes('User')) {
+                            // Team members have 'User' role - redirect to team dashboard
+                            navigate("/team-dashboard");
                         } else {
                             navigate("/");
                         }

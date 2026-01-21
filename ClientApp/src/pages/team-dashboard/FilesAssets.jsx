@@ -17,6 +17,7 @@ import {
     FileDown
 } from "lucide-react";
 import { tasksAPI } from "../../services/api";
+import { generateMockTasks, generateMockFiles } from "../../services/mockData";
 
 export default function FilesAssets() {
     const { userInfo, teamMemberInfo } = useOutletContext();
@@ -81,33 +82,23 @@ export default function FilesAssets() {
     const fetchFiles = async () => {
         try {
             setLoading(true);
-            // Fetch tasks to get associated files
-            const tasksResponse = await tasksAPI.getMyTasks();
-            const tasks = tasksResponse.items || [];
+            // TODO: Replace with real API calls when backend is ready
+            // const tasksResponse = await tasksAPI.getMyTasks();
+            // const filesResponse = await filesAPI.getAll();
             
-            // Mock file data - in real app, this would come from a files API
-            const mockFiles = tasks.flatMap(task => {
-                if (task.fileCount > 0) {
-                    return Array.from({ length: task.fileCount }, (_, i) => ({
-                        id: `${task.id}-${i}`,
-                        name: `File ${i + 1} for ${task.title}`,
-                        type: i % 3 === 0 ? 'image' : i % 3 === 1 ? 'document' : 'other',
-                        size: Math.floor(Math.random() * 5000) + 100, // KB
-                        uploadedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-                        taskId: task.id,
-                        taskTitle: task.title,
-                        campaignName: task.campaignName,
-                        version: 1,
-                        owner: userInfo.email
-                    }));
-                }
-                return [];
-            });
+            // Use mock data for now
+            const tasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
+            const mockFiles = generateMockFiles(tasks);
             
             setFiles(mockFiles);
             setFilteredFiles(mockFiles);
         } catch (error) {
             console.error("Error fetching files:", error);
+            // Fallback to mock data
+            const tasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
+            const mockFiles = generateMockFiles(tasks);
+            setFiles(mockFiles);
+            setFilteredFiles(mockFiles);
         } finally {
             setLoading(false);
         }

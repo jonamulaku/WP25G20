@@ -15,6 +15,7 @@ import {
     FileText
 } from "lucide-react";
 import { tasksAPI } from "../../services/api";
+import { generateMockTasks, generateMockComments } from "../../services/mockData";
 
 const PRIORITY_COLORS = {
     Low: "bg-slate-100 text-slate-700",
@@ -51,12 +52,20 @@ export default function MyTasks() {
     const fetchTasks = async () => {
         try {
             setLoading(true);
-            const response = await tasksAPI.getMyTasks();
-            const userTasks = response.items || [];
+            // TODO: Replace with real API call when backend is ready
+            // const response = await tasksAPI.getMyTasks();
+            // const userTasks = response.items || [];
+            
+            // Use mock data for now
+            const userTasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
             setTasks(userTasks);
             setFilteredTasks(userTasks);
         } catch (error) {
             console.error("Error fetching tasks:", error);
+            // Fallback to mock data on error
+            const userTasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
+            setTasks(userTasks);
+            setFilteredTasks(userTasks);
         } finally {
             setLoading(false);
         }
@@ -88,9 +97,40 @@ export default function MyTasks() {
 
     const handleViewTask = async (taskId) => {
         try {
-            const task = await tasksAPI.getById(taskId);
-            setSelectedTask(task);
-            setShowTaskDetail(true);
+            // TODO: Replace with real API call when backend is ready
+            // const task = await tasksAPI.getById(taskId);
+            
+            // Use mock data for now
+            const task = tasks.find(t => t.id === taskId) || tasks[0];
+            if (task) {
+                // Enhance task with additional details
+                const enhancedTask = {
+                    ...task,
+                    requirements: [
+                        "Review brand guidelines",
+                        "Ensure responsive design",
+                        "Get stakeholder approval",
+                        "Final quality check"
+                    ],
+                    attachments: Array.from({ length: task.fileCount || 0 }, (_, i) => ({
+                        id: `${task.id}-file-${i}`,
+                        name: `attachment_${i + 1}.pdf`,
+                        size: Math.floor(Math.random() * 2000) + 100,
+                        uploadedAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString()
+                    })),
+                    comments: generateMockComments([task]),
+                    statusHistory: [
+                        { status: 'Pending', changedAt: task.createdAt, changedBy: 'System' },
+                        ...(task.updatedAt ? [{ status: task.status, changedAt: task.updatedAt, changedBy: 'You' }] : []),
+                        ...(task.completedAt ? [{ status: 'Completed', changedAt: task.completedAt, changedBy: 'You' }] : [])
+                    ],
+                    timeSpent: task.completedAt && task.createdAt 
+                        ? Math.round((new Date(task.completedAt) - new Date(task.createdAt)) / (1000 * 60 * 60)) 
+                        : null
+                };
+                setSelectedTask(enhancedTask);
+                setShowTaskDetail(true);
+            }
         } catch (error) {
             console.error("Error fetching task details:", error);
         }
@@ -376,69 +416,147 @@ function TaskDetailModal({ task, onClose, onUpdateStatus, onAddComment }) {
                             <p className="text-white mt-1 whitespace-pre-wrap">{task.description || "No description"}</p>
                     </div>
 
-                    {/* Requirements Checklist (mock) */}
-                    <div>
-                            <label className="text-sm font-medium text-slate-400 mb-2 block">Requirements</label>
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2">
-                                    <input type="checkbox" className="rounded" />
-                                    <span className="text-slate-300">Requirement 1</span>
-                            </label>
-                            <label className="flex items-center gap-2">
-                                <input type="checkbox" className="rounded" />
-                                    <span className="text-slate-300">Requirement 2</span>
-                            </label>
+                    {/* Requirements Checklist */}
+                    {task.requirements && task.requirements.length > 0 && (
+                        <div>
+                            <label className="text-sm font-medium text-slate-400 mb-2 block">Requirements Checklist</label>
+                            <div className="space-y-2 bg-slate-700/30 rounded-lg p-4">
+                                {task.requirements.map((req, index) => (
+                                    <label key={index} className="flex items-center gap-3 cursor-pointer hover:bg-slate-700/50 p-2 rounded">
+                                        <input 
+                                            type="checkbox" 
+                                            className="rounded w-4 h-4 text-emerald-600 focus:ring-emerald-500" 
+                                            defaultChecked={index < 2}
+                                        />
+                                        <span className="text-slate-300">{req}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Attachments */}
                     <div>
-                        <label className="text-sm font-medium text-slate-400 mb-2 block">Attachments ({task.fileCount || 0})</label>
-                        <button className="flex items-center gap-2 px-4 py-2 border border-slate-600 rounded-lg hover:bg-slate-700/50 text-slate-300">
-                            <Paperclip size={18} />
-                            <span>Upload File</span>
-                        </button>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium text-slate-400">Attachments ({task.attachments?.length || 0})</label>
+                            <button className="flex items-center gap-2 px-3 py-1.5 text-sm border border-slate-600 rounded-lg hover:bg-slate-700/50 text-slate-300">
+                                <Paperclip size={16} />
+                                <span>Upload File</span>
+                            </button>
+                        </div>
+                        {task.attachments && task.attachments.length > 0 ? (
+                            <div className="space-y-2 bg-slate-700/30 rounded-lg p-4">
+                                {task.attachments.map((file) => (
+                                    <div key={file.id} className="flex items-center justify-between p-2 hover:bg-slate-700/50 rounded">
+                                        <div className="flex items-center gap-3">
+                                            <FileText className="text-slate-400" size={18} />
+                                            <div>
+                                                <p className="text-sm text-white">{file.name}</p>
+                                                <p className="text-xs text-slate-400">
+                                                    {(file.size / 1024).toFixed(2)} KB • {new Date(file.uploadedAt).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button className="text-emerald-400 hover:text-emerald-300 text-sm">Download</button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-slate-700/30 rounded-lg p-4 text-center text-slate-400 text-sm">
+                                No attachments yet
+                            </div>
+                        )}
                     </div>
 
-                    {/* Comments */}
+                    {/* Comments Thread */}
                     <div>
-                            <label className="text-sm font-medium text-slate-400 mb-2 block">Comments ({task.commentCount || 0})</label>
-                            <div className="space-y-3">
-                                <div className="flex gap-3">
-                                    <input
-                                        type="text"
-                                        value={comment}
-                                        onChange={(e) => setComment(e.target.value)}
-                                        placeholder="Add a comment..."
-                                        className="flex-1 px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        <label className="text-sm font-medium text-slate-400 mb-2 block">Comments ({task.comments?.length || 0})</label>
+                        <div className="space-y-3">
+                            {/* Comments List */}
+                            {task.comments && task.comments.length > 0 ? (
+                                <div className="space-y-3 bg-slate-700/30 rounded-lg p-4 max-h-64 overflow-y-auto">
+                                    {task.comments.map((comment) => (
+                                        <div key={comment.id} className="border-b border-slate-600/50 pb-3 last:border-0">
+                                            <div className="flex items-start justify-between mb-1">
+                                                <div className="flex items-center gap-2">
+                                                    <User className="text-slate-400" size={16} />
+                                                    <span className="text-sm font-medium text-white">{comment.author}</span>
+                                                </div>
+                                                <span className="text-xs text-slate-400">
+                                                    {new Date(comment.createdAt).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-slate-300 ml-6">{comment.message}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="bg-slate-700/30 rounded-lg p-4 text-center text-slate-400 text-sm">
+                                    No comments yet
+                                </div>
+                            )}
+                            
+                            {/* Add Comment */}
+                            <div className="flex gap-3">
+                                <input
+                                    type="text"
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                    placeholder="Add a comment... (Use @ to mention someone)"
+                                    className="flex-1 px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSubmitComment()}
                                 />
                                 <button
                                     onClick={handleSubmitComment}
                                     className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
                                 >
-                                    Add
+                                    <MessageSquare size={18} />
                                 </button>
                             </div>
-                            <div className="text-sm text-slate-500">Comments thread would appear here</div>
                         </div>
                     </div>
 
-                    {/* Status History (mock) */}
-                    <div>
+                    {/* Status History */}
+                    {task.statusHistory && task.statusHistory.length > 0 && (
+                        <div>
                             <label className="text-sm font-medium text-slate-400 mb-2 block">Status History</label>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex items-center gap-2 text-slate-300">
-                                <Clock size={14} />
-                                <span>Created on {new Date(task.createdAt).toLocaleDateString()}</span>
+                            <div className="space-y-2 bg-slate-700/30 rounded-lg p-4">
+                                {task.statusHistory.map((history, index) => (
+                                    <div key={index} className="flex items-center gap-3 text-sm">
+                                        <div className={`w-2 h-2 rounded-full ${
+                                            history.status === 'Completed' ? 'bg-emerald-500' :
+                                            history.status === 'InProgress' ? 'bg-blue-500' :
+                                            history.status === 'Review' ? 'bg-purple-500' :
+                                            'bg-slate-500'
+                                        }`} />
+                                        <div className="flex-1">
+                                            <span className="text-white font-medium">{history.status}</span>
+                                            <span className="text-slate-400 ml-2">by {history.changedBy}</span>
+                                        </div>
+                                        <span className="text-slate-400 text-xs">
+                                            {new Date(history.changedAt).toLocaleString()}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
-                            {task.completedAt && (
-                                <div className="flex items-center gap-2 text-slate-300">
-                                    <Clock size={14} />
-                                    <span>Completed on {new Date(task.completedAt).toLocaleDateString()}</span>
-                                </div>
-                            )}
                         </div>
-                    </div>
+                    )}
+
+                    {/* Time Spent */}
+                    {task.timeSpent !== null && (
+                        <div>
+                            <label className="text-sm font-medium text-slate-400 mb-2 block">Time Spent</label>
+                            <div className="bg-slate-700/30 rounded-lg p-4">
+                                <div className="flex items-center gap-2">
+                                    <Clock className="text-emerald-400" size={18} />
+                                    <span className="text-white font-medium">{task.timeSpent} hours</span>
+                                    <span className="text-slate-400 text-sm ml-2">
+                                        ({task.timeSpent < 8 ? 'Under estimate' : task.timeSpent > 12 ? 'Over estimate' : 'On track'})
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

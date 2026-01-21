@@ -12,6 +12,7 @@ import {
     Search
 } from "lucide-react";
 import { tasksAPI } from "../../services/api";
+import { generateMockTasks, generateMockComments, generateMockNotifications } from "../../services/mockData";
 
 export default function Communication() {
     const { userInfo, teamMemberInfo } = useOutletContext();
@@ -29,63 +30,32 @@ export default function Communication() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const tasksResponse = await tasksAPI.getMyTasks();
-            const userTasks = tasksResponse.items || [];
+            
+            if (!userInfo || !userInfo.id) {
+                console.warn("User info not available");
+                setLoading(false);
+                return;
+            }
+            
+            // TODO: Replace with real API call when backend is ready
+            // const tasksResponse = await tasksAPI.getMyTasks();
+            
+            // Use mock data for now
+            const userTasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
             setTasks(userTasks);
 
-            // Mock notifications
-            const mockNotifications = [
-                {
-                    id: 1,
-                    type: 'task_assigned',
-                    message: 'New task assigned: Design Campaign Banner',
-                    taskId: userTasks[0]?.id,
-                    read: false,
-                    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-                },
-                {
-                    id: 2,
-                    type: 'feedback',
-                    message: 'Feedback received on task: Social Media Posts',
-                    taskId: userTasks[1]?.id,
-                    read: false,
-                    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000)
-                },
-                {
-                    id: 3,
-                    type: 'deadline',
-                    message: 'Deadline reminder: Campaign Review due tomorrow',
-                    taskId: userTasks[2]?.id,
-                    read: true,
-                    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000)
-                }
-            ];
+            // Get mock notifications and comments
+            const mockNotifications = generateMockNotifications();
+            const mockComments = generateMockComments(userTasks);
+            
             setNotifications(mockNotifications);
-
-            // Mock comments
-            const mockComments = userTasks.flatMap(task => [
-                {
-                    id: `${task.id}-1`,
-                    taskId: task.id,
-                    taskTitle: task.title,
-                    author: 'Campaign Manager',
-                    message: 'Please review the requirements before starting.',
-                    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-                    mentions: []
-                },
-                {
-                    id: `${task.id}-2`,
-                    taskId: task.id,
-                    taskTitle: task.title,
-                    author: userInfo.firstName || 'You',
-                    message: 'Working on it. Will update soon.',
-                    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-                    mentions: []
-                }
-            ]);
             setComments(mockComments);
         } catch (error) {
             console.error("Error fetching communication data:", error);
+            // Set empty arrays on error to prevent blank page
+            setTasks([]);
+            setNotifications([]);
+            setComments([]);
         } finally {
             setLoading(false);
         }
@@ -178,7 +148,7 @@ export default function Communication() {
                                                     {notification.message}
                                                 </p>
                                                 <p className="text-xs text-slate-400 mt-1">
-                                                    {formatTimeAgo(notification.createdAt)}
+                                                    {formatTimeAgo(new Date(notification.createdAt))}
                                                 </p>
                                             </div>
                                         </div>
@@ -219,7 +189,12 @@ export default function Communication() {
                                 <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
                                     {comments
                                         .filter(c => c.taskId === selectedTask.id)
-                                        .map(comment => (
+                                        .length === 0 ? (
+                                        <p className="text-slate-400 text-sm text-center py-8">No comments yet for this task</p>
+                                    ) : (
+                                        comments
+                                            .filter(c => c.taskId === selectedTask.id)
+                                            .map(comment => (
                                             <div
                                                 key={comment.id}
                                                 className="p-4 bg-slate-700/30 rounded-lg"
@@ -237,14 +212,15 @@ export default function Communication() {
                                                         )}
                                                     </div>
                                                     <span className="text-xs text-slate-400">
-                                                        {formatTimeAgo(comment.createdAt)}
+                                                        {formatTimeAgo(new Date(comment.createdAt))}
                                                     </span>
                                                 </div>
                                                 <p className="text-slate-300 whitespace-pre-wrap">
                                                     {comment.message}
                                                 </p>
                                             </div>
-                                        ))}
+                                        ))
+                                    )}
                                 </div>
 
                                 {/* Add Comment */}
@@ -262,7 +238,7 @@ export default function Communication() {
                                                 <button className="p-2 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-lg">
                                                     <Paperclip size={18} />
                                                 </button>
-                                                <button className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg">
+                                                <button className="p-2 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-lg">
                                                     <AtSign size={18} />
                                                 </button>
                                             </div>

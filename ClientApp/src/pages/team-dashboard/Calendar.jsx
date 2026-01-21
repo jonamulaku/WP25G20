@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Calendar as CalendarIcon, Clock, CheckSquare, Megaphone } from "lucide-react";
 import { tasksAPI, campaignsAPI } from "../../services/api";
+import { generateMockTasks, generateMockCampaigns } from "../../services/mockData";
 
 export default function Calendar() {
     const { userInfo, teamMemberInfo } = useOutletContext();
@@ -19,17 +20,23 @@ export default function Calendar() {
         try {
             setLoading(true);
             
-            const tasksResponse = await tasksAPI.getMyTasks();
-            setTasks(tasksResponse.items || []);
+            // TODO: Replace with real API calls when backend is ready
+            // const tasksResponse = await tasksAPI.getMyTasks();
+            // const campaignsResponse = await campaignsAPI.getAll();
             
-            const campaignsResponse = await campaignsAPI.getAll();
-            const allCampaigns = campaignsResponse.items || [];
-            const userCampaigns = allCampaigns.filter(campaign => 
-                campaign.assignedUserIds?.includes(userInfo.id)
-            );
+            // Use mock data for now
+            const userTasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
+            const userCampaigns = generateMockCampaigns(userInfo.id);
+            
+            setTasks(userTasks);
             setCampaigns(userCampaigns);
         } catch (error) {
             console.error("Error fetching calendar data:", error);
+            // Fallback to mock data
+            const userTasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
+            const userCampaigns = generateMockCampaigns(userInfo.id);
+            setTasks(userTasks);
+            setCampaigns(userCampaigns);
         } finally {
             setLoading(false);
         }

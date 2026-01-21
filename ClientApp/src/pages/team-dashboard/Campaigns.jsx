@@ -14,6 +14,7 @@ import {
     TrendingUp
 } from "lucide-react";
 import { campaignsAPI, tasksAPI } from "../../services/api";
+import { generateMockCampaigns, generateMockTasks } from "../../services/mockData";
 
 const STATUS_COLORS = {
     Pending: "bg-slate-100 text-slate-700",
@@ -49,17 +50,21 @@ export default function Campaigns() {
     const fetchCampaigns = async () => {
         try {
             setLoading(true);
-            const response = await campaignsAPI.getAll();
-            const allCampaigns = response.items || [];
+            // TODO: Replace with real API call when backend is ready
+            // const response = await campaignsAPI.getAll();
+            // const allCampaigns = response.items || [];
+            // const userCampaigns = allCampaigns.filter(campaign => 
+            //     campaign.assignedUserIds?.includes(userInfo.id)
+            // );
             
-            // Filter campaigns where user is assigned
-            const userCampaigns = allCampaigns.filter(campaign => 
-                campaign.assignedUserIds?.includes(userInfo.id)
-            );
-            
+            // Use mock data for now
+            const userCampaigns = generateMockCampaigns(userInfo.id);
             setCampaigns(userCampaigns);
         } catch (error) {
             console.error("Error fetching campaigns:", error);
+            // Fallback to mock data
+            const userCampaigns = generateMockCampaigns(userInfo.id);
+            setCampaigns(userCampaigns);
         } finally {
             setLoading(false);
         }
@@ -67,16 +72,34 @@ export default function Campaigns() {
 
     const handleViewCampaign = async (campaignId) => {
         try {
-            const campaign = await campaignsAPI.getById(campaignId);
-            setSelectedCampaign(campaign);
+            // TODO: Replace with real API calls when backend is ready
+            // const campaign = await campaignsAPI.getById(campaignId);
+            // const tasksResponse = await tasksAPI.getAll();
             
-            // Fetch tasks for this campaign
-            const tasksResponse = await tasksAPI.getAll();
-            const campaignTasks = (tasksResponse.items || []).filter(
-                task => task.campaignId === campaignId && task.assignedToTeamMemberId === teamMemberInfo?.id
-            );
+            // Use mock data for now
+            const campaign = campaigns.find(c => c.id === campaignId) || campaigns[0];
+            const mockTasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
+            const campaignTasks = mockTasks.filter(t => t.campaignId === campaignId);
+            
+            // Enhance campaign with KPIs and assets
+            const enhancedCampaign = {
+                ...campaign,
+                kpis: {
+                    engagementRate: 12.5 + Math.random() * 5,
+                    clickThroughRate: 3.2 + Math.random() * 2,
+                    conversionRate: 2.8 + Math.random() * 1.5,
+                    roi: 250 + Math.random() * 100
+                },
+                assets: Array.from({ length: Math.floor(Math.random() * 5) + 2 }, (_, i) => ({
+                    id: `asset-${campaign.id}-${i}`,
+                    name: `Campaign Asset ${i + 1}.${i % 2 === 0 ? 'jpg' : 'pdf'}`,
+                    type: i % 2 === 0 ? 'image' : 'document',
+                    uploadedAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString()
+                }))
+            };
+            
+            setSelectedCampaign(enhancedCampaign);
             setCampaignTasks(campaignTasks);
-            
             setShowDetail(true);
         } catch (error) {
             console.error("Error fetching campaign details:", error);

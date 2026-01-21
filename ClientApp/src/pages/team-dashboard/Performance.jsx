@@ -11,6 +11,7 @@ import {
     BarChart3
 } from "lucide-react";
 import { tasksAPI, campaignsAPI } from "../../services/api";
+import { generateMockTasks, generateMockCampaigns, generateRoleSpecificMetrics } from "../../services/mockData";
 import {
     LineChart,
     Line,
@@ -45,66 +46,34 @@ export default function Performance() {
         try {
             setLoading(true);
             
-            const tasksResponse = await tasksAPI.getMyTasks();
-            const tasks = tasksResponse.items || [];
+            // TODO: Replace with real API calls when backend is ready
+            // const tasksResponse = await tasksAPI.getMyTasks();
+            // const campaignsResponse = await campaignsAPI.getAll();
             
-            const campaignsResponse = await campaignsAPI.getAll();
-            const allCampaigns = campaignsResponse.items || [];
-            const userCampaigns = allCampaigns.filter(campaign => 
-                campaign.assignedUserIds?.includes(userInfo.id)
-            );
-
-            let roleMetrics = {};
+            // Use mock data for now
+            const tasks = generateMockTasks(userInfo.id, role);
+            const userCampaigns = generateMockCampaigns(userInfo.id);
+            
+            // Get role-specific metrics
+            const roleMetrics = generateRoleSpecificMetrics(role, tasks, userCampaigns);
             let roleChartData = [];
 
             if (role.toLowerCase().includes('marketer') || role.toLowerCase().includes('marketing')) {
-                // Digital Marketing Specialist metrics
-                roleMetrics = {
-                    engagementRate: 12.5,
-                    ctr: 3.2,
-                    conversionRate: 2.8,
-                    campaignPerformance: 85
-                };
-
-                // Campaign performance over time
-                roleChartData = userCampaigns.slice(0, 6).map(campaign => ({
-                    name: campaign.name.substring(0, 15),
-                    engagement: Math.random() * 20 + 5,
-                    ctr: Math.random() * 5 + 1,
-                    conversion: Math.random() * 4 + 1
+                // Campaign performance over time (last 6 months)
+                const last6Months = Array.from({ length: 6 }, (_, i) => {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - (5 - i));
+                    return date.toLocaleDateString('en-US', { month: 'short' });
+                });
+                
+                roleChartData = last6Months.map(month => ({
+                    name: month,
+                    engagement: (roleMetrics.engagementRate || 0) + (Math.random() * 5 - 2.5),
+                    ctr: (roleMetrics.ctr || 0) + (Math.random() * 1 - 0.5),
+                    conversion: (roleMetrics.conversionRate || 0) + (Math.random() * 1 - 0.5)
                 }));
             } else if (role.toLowerCase().includes('designer') || role.toLowerCase().includes('graphic')) {
-                // Graphic Designer metrics
-                const designTasks = tasks.filter(t => 
-                    t.title.toLowerCase().includes('design') || 
-                    t.title.toLowerCase().includes('asset') ||
-                    t.title.toLowerCase().includes('graphic')
-                );
-                const totalAssets = designTasks.length;
-                const approvedAssets = designTasks.filter(t => t.status === 'Completed').length;
-                const revisions = designTasks.reduce((sum, t) => {
-                    // Mock revision count based on task history
-                    return sum + (t.status === 'Completed' ? 1 : 2);
-                }, 0);
-                
-                // Calculate average turnaround time (mock)
-                const completedTasks = tasks.filter(t => t.status === 'Completed' && t.completedAt);
-                const avgTurnaround = completedTasks.length > 0
-                    ? completedTasks.reduce((sum, t) => {
-                        const created = new Date(t.createdAt);
-                        const completed = new Date(t.completedAt);
-                        return sum + (completed - created) / (1000 * 60 * 60 * 24); // days
-                    }, 0) / completedTasks.length
-                    : 0;
-
-                roleMetrics = {
-                    assetsDelivered: totalAssets,
-                    revisionsPerAsset: totalAssets > 0 ? (revisions / totalAssets).toFixed(1) : 0,
-                    approvalRate: totalAssets > 0 ? Math.round((approvedAssets / totalAssets) * 100) : 0,
-                    avgTurnaroundTime: Math.round(avgTurnaround * 10) / 10
-                };
-
-                // Assets delivered over time
+                // Assets delivered over time (last 6 months)
                 const last6Months = Array.from({ length: 6 }, (_, i) => {
                     const date = new Date();
                     date.setMonth(date.getMonth() - (5 - i));
@@ -117,49 +86,13 @@ export default function Performance() {
                     approved: Math.floor(Math.random() * 8 + 3)
                 }));
             } else if (role.toLowerCase().includes('manager') || role.toLowerCase().includes('campaign')) {
-                // Campaign Manager metrics
-                const totalCampaigns = userCampaigns.length;
-                const successfulCampaigns = userCampaigns.filter(c => 
-                    c.status === 'Completed' && (c.completedTaskCount / c.taskCount) >= 0.8
-                ).length;
-                const successRate = totalCampaigns > 0 
-                    ? Math.round((successfulCampaigns / totalCampaigns) * 100) 
-                    : 0;
-
-                // Task completion across team (mock - would need team data)
-                const teamCompletionRate = tasks.length > 0
-                    ? Math.round((tasks.filter(t => t.status === 'Completed').length / tasks.length) * 100)
-                    : 0;
-
-                // Bottleneck detection (mock)
-                const overdueTasks = tasks.filter(t => {
-                    if (!t.dueDate) return false;
-                    return new Date(t.dueDate) < new Date() && t.status !== 'Completed';
-                }).length;
-
-                // Timeline accuracy (mock)
-                const onTimeTasks = tasks.filter(t => {
-                    if (!t.dueDate || !t.completedAt) return false;
-                    return new Date(t.completedAt) <= new Date(t.dueDate);
-                }).length;
-                const timelineAccuracy = tasks.length > 0
-                    ? Math.round((onTimeTasks / tasks.length) * 100)
-                    : 0;
-
-                roleMetrics = {
-                    campaignSuccessRate: successRate,
-                    teamTaskCompletion: teamCompletionRate,
-                    bottleneckTasks: overdueTasks,
-                    timelineAccuracy: timelineAccuracy
-                };
-
                 // Campaign success over time
-                roleChartData = userCampaigns.slice(0, 6).map(campaign => {
+                roleChartData = userCampaigns.map(campaign => {
                     const progress = campaign.taskCount > 0
                         ? (campaign.completedTaskCount / campaign.taskCount) * 100
                         : 0;
                     return {
-                        name: campaign.name.substring(0, 15),
+                        name: campaign.name.length > 15 ? campaign.name.substring(0, 15) + '...' : campaign.name,
                         success: progress,
                         tasks: campaign.taskCount || 0
                     };
@@ -170,6 +103,12 @@ export default function Performance() {
             setChartData(roleChartData);
         } catch (error) {
             console.error("Error fetching performance data:", error);
+            // Fallback to mock data
+            const tasks = generateMockTasks(userInfo.id, role);
+            const userCampaigns = generateMockCampaigns(userInfo.id);
+            const roleMetrics = generateRoleSpecificMetrics(role, tasks, userCampaigns);
+            setMetrics(roleMetrics);
+            setChartData([]);
         } finally {
             setLoading(false);
         }
@@ -240,14 +179,30 @@ function MarketingMetrics({ metrics, chartData }) {
                 <h2 className="text-xl font-semibold text-white mb-4">Campaign Performance Over Time</h2>
                 <ResponsiveContainer width="100%" height={400}>
                     <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Line type="monotone" dataKey="engagement" stroke="#3b82f6" name="Engagement %" />
-                        <Line type="monotone" dataKey="ctr" stroke="#10b981" name="CTR %" />
-                        <Line type="monotone" dataKey="conversion" stroke="#8b5cf6" name="Conversion %" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                        <XAxis 
+                            dataKey="name" 
+                            stroke="#94a3b8"
+                            style={{ fontSize: '12px' }}
+                        />
+                        <YAxis 
+                            stroke="#94a3b8"
+                            style={{ fontSize: '12px' }}
+                        />
+                        <Tooltip 
+                            contentStyle={{ 
+                                backgroundColor: '#1e293b', 
+                                border: '1px solid #475569',
+                                borderRadius: '8px',
+                                color: '#fff'
+                            }}
+                        />
+                        <Legend 
+                            wrapperStyle={{ color: '#cbd5e1', fontSize: '12px' }}
+                        />
+                        <Line type="monotone" dataKey="engagement" stroke="#3b82f6" name="Engagement %" strokeWidth={2} />
+                        <Line type="monotone" dataKey="ctr" stroke="#10b981" name="CTR %" strokeWidth={2} />
+                        <Line type="monotone" dataKey="conversion" stroke="#8b5cf6" name="Conversion %" strokeWidth={2} />
                     </LineChart>
                 </ResponsiveContainer>
             </div>
@@ -289,13 +244,29 @@ function DesignerMetrics({ metrics, chartData }) {
                 <h2 className="text-xl font-semibold text-white mb-4">Assets Delivered Over Time</h2>
                 <ResponsiveContainer width="100%" height={400}>
                     <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="delivered" fill="#3b82f6" name="Delivered" />
-                        <Bar dataKey="approved" fill="#10b981" name="Approved" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                        <XAxis 
+                            dataKey="name" 
+                            stroke="#94a3b8"
+                            style={{ fontSize: '12px' }}
+                        />
+                        <YAxis 
+                            stroke="#94a3b8"
+                            style={{ fontSize: '12px' }}
+                        />
+                        <Tooltip 
+                            contentStyle={{ 
+                                backgroundColor: '#1e293b', 
+                                border: '1px solid #475569',
+                                borderRadius: '8px',
+                                color: '#fff'
+                            }}
+                        />
+                        <Legend 
+                            wrapperStyle={{ color: '#cbd5e1', fontSize: '12px' }}
+                        />
+                        <Bar dataKey="delivered" fill="#3b82f6" name="Delivered" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="approved" fill="#10b981" name="Approved" radius={[8, 8, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>
@@ -337,13 +308,32 @@ function ManagerMetrics({ metrics, chartData }) {
                 <h2 className="text-xl font-semibold text-white mb-4">Campaign Success Metrics</h2>
                 <ResponsiveContainer width="100%" height={400}>
                     <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="success" fill="#10b981" name="Success %" />
-                        <Bar dataKey="tasks" fill="#3b82f6" name="Total Tasks" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                        <XAxis 
+                            dataKey="name" 
+                            angle={-45} 
+                            textAnchor="end" 
+                            height={100}
+                            stroke="#94a3b8"
+                            style={{ fontSize: '11px' }}
+                        />
+                        <YAxis 
+                            stroke="#94a3b8"
+                            style={{ fontSize: '12px' }}
+                        />
+                        <Tooltip 
+                            contentStyle={{ 
+                                backgroundColor: '#1e293b', 
+                                border: '1px solid #475569',
+                                borderRadius: '8px',
+                                color: '#fff'
+                            }}
+                        />
+                        <Legend 
+                            wrapperStyle={{ color: '#cbd5e1', fontSize: '12px' }}
+                        />
+                        <Bar dataKey="success" fill="#10b981" name="Success %" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="tasks" fill="#3b82f6" name="Total Tasks" radius={[8, 8, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>

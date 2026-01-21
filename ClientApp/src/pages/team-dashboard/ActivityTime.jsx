@@ -10,6 +10,7 @@ import {
     Filter
 } from "lucide-react";
 import { tasksAPI } from "../../services/api";
+import { generateMockTasks, generateMockActivityLog } from "../../services/mockData";
 
 export default function ActivityTime() {
     const { userInfo, teamMemberInfo } = useOutletContext();
@@ -26,41 +27,33 @@ export default function ActivityTime() {
         try {
             setLoading(true);
             
-            const tasksResponse = await tasksAPI.getMyTasks();
-            const tasks = tasksResponse.items || [];
-
+            if (!userInfo || !userInfo.id) {
+                console.warn("User info not available");
+                setLoading(false);
+                return;
+            }
+            
+            // TODO: Replace with real API call when backend is ready
+            // const tasksResponse = await tasksAPI.getMyTasks();
+            
+            // Use mock data for now
+            const tasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
+            
             // Generate activity log from tasks
-            const activityLog = tasks.flatMap(task => [
-                {
-                    id: `${task.id}-created`,
-                    type: 'task_created',
-                    description: `Task "${task.title}" was created`,
-                    entityType: 'Task',
-                    entityId: task.id,
-                    createdAt: new Date(task.createdAt),
-                    icon: CheckSquare
-                },
-                ...(task.updatedAt ? [{
-                    id: `${task.id}-updated`,
-                    type: 'task_updated',
-                    description: `Task "${task.title}" was updated`,
-                    entityType: 'Task',
-                    entityId: task.id,
-                    createdAt: new Date(task.updatedAt),
-                    icon: Activity
-                }] : []),
-                ...(task.completedAt ? [{
-                    id: `${task.id}-completed`,
-                    type: 'task_completed',
-                    description: `Task "${task.title}" was completed`,
-                    entityType: 'Task',
-                    entityId: task.id,
-                    createdAt: new Date(task.completedAt),
-                    icon: CheckSquare
-                }] : [])
-            ]).sort((a, b) => b.createdAt - a.createdAt);
+            const activityLog = generateMockActivityLog(tasks);
+            
+            // Map activity types to icons and ensure createdAt is a Date object
+            const activityLogWithIcons = activityLog.map(activity => ({
+                ...activity,
+                createdAt: new Date(activity.createdAt), // Ensure it's a Date object
+                icon: activity.type === 'task_created' || activity.type === 'task_completed' 
+                    ? CheckSquare 
+                    : activity.type === 'file_uploaded'
+                    ? FileText
+                    : Activity
+            }));
 
-            setActivities(activityLog);
+            setActivities(activityLogWithIcons);
 
             // Calculate time tracking
             const completedTasks = tasks.filter(t => t.status === 'Completed' && t.completedAt);
@@ -120,6 +113,9 @@ export default function ActivityTime() {
             });
         } catch (error) {
             console.error("Error fetching activity data:", error);
+            // Set empty arrays on error to prevent blank page
+            setActivities([]);
+            setTimeTracking({});
         } finally {
             setLoading(false);
         }
@@ -216,7 +212,7 @@ export default function ActivityTime() {
                             <select
                                 value={selectedPeriod}
                                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                                className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                                className="pl-10 pr-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                             >
                                 <option value="week">This Week</option>
                                 <option value="month">This Month</option>
@@ -236,8 +232,8 @@ export default function ActivityTime() {
                                         key={activity.id}
                                         className="flex items-start gap-3 p-3 bg-slate-700/30 rounded-lg"
                                     >
-                                        <div className="p-2 bg-emerald-100 rounded-lg">
-                                            <Icon className="text-emerald-600" size={18} />
+                                        <div className="p-2 bg-emerald-600/20 rounded-lg">
+                                            <Icon className="text-emerald-400" size={18} />
                                         </div>
                                         <div className="flex-1">
                                         <p className="text-sm text-white">{activity.description}</p>

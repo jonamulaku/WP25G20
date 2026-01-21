@@ -11,7 +11,7 @@ namespace WP25G20.Data
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
             // Create roles
-            string[] roles = { "Admin", "User" };
+            string[] roles = { "Admin", "Client", "User" };
             foreach (var role in roles)
             {
                 if (!await roleManager.RoleExistsAsync(role))
@@ -77,6 +77,40 @@ namespace WP25G20.Data
                 {
                     await userManager.AddToRoleAsync(testUser, "User");
                     Console.WriteLine($"Test user created: {testEmail} / {testPassword}");
+                }
+            }
+
+            // Create client user
+            var clientEmail = "client@marketingagency.com";
+            var clientPassword = "Client123!";
+
+            var clientUser = await userManager.FindByEmailAsync(clientEmail);
+            if (clientUser == null)
+            {
+                clientUser = new ApplicationUser
+                {
+                    UserName = clientEmail,
+                    Email = clientEmail,
+                    EmailConfirmed = true,
+                    FirstName = "Client",
+                    LastName = "User",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var result = await userManager.CreateAsync(clientUser, clientPassword);
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(clientUser, "Client");
+                    Console.WriteLine($"Client user created: {clientEmail} / {clientPassword}");
+                }
+            }
+            else
+            {
+                // Ensure client has Client role
+                if (!await userManager.IsInRoleAsync(clientUser, "Client"))
+                {
+                    await userManager.AddToRoleAsync(clientUser, "Client");
                 }
             }
         }

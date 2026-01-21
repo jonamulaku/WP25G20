@@ -51,8 +51,15 @@ export default function Navbar() {
                         </Link>
                     </div>
 
-                    {/* CONTACT BUTTON - Desktop */}
+                    {/* CONTACT & LOGIN BUTTONS - Desktop */}
                     <div className="hidden lg:flex items-center gap-4 flex-1 justify-end">
+                        <Link
+                            to="/login"
+                            className="px-6 py-2.5 bg-white text-emerald-600 rounded-xl font-semibold border-2 border-emerald-600
+                                     hover:bg-emerald-50 transition-all duration-300 hover:scale-105"
+                        >
+                            Login
+                        </Link>
                         <a
                             href="mailto:test@test.com"
                             className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold
@@ -94,10 +101,18 @@ export default function Navbar() {
                                 {link.label}
                             </Link>
                         ))}
+                        <Link
+                            to="/login"
+                            onClick={() => setOpen(false)}
+                            className="block w-full mt-4 px-6 py-3 bg-white text-emerald-600 rounded-xl font-semibold border-2 border-emerald-600
+                                     text-center hover:bg-emerald-50 transition-all duration-300"
+                        >
+                            Login
+                        </Link>
                         <a
                             href="mailto:test@test.com"
                             onClick={() => setOpen(false)}
-                            className="block w-full mt-4 px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold
+                            className="block w-full px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold
                                      text-center hover:bg-emerald-700 transition-all duration-300"
                         >
                             Contact

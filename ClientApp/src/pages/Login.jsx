@@ -77,8 +77,19 @@ export default function Login() {
                 
                 // Small delay to ensure state is updated
                 setTimeout(() => {
-                    // Success - redirect to home page
-                    navigate("/");
+                    // Redirect based on user role
+                    const user = authAPI.getCurrentUser();
+                    if (user && user.roles) {
+                        if (user.roles.includes('Client')) {
+                            navigate("/client-dashboard");
+                        } else if (user.roles.includes('Admin')) {
+                            navigate("/dashboard");
+                        } else {
+                            navigate("/");
+                        }
+                    } else {
+                        navigate("/");
+                    }
                 }, 100);
             } catch (error) {
                 console.error('Login error:', error);

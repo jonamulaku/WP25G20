@@ -1,0 +1,225 @@
+import { useState, useEffect } from "react";
+import {
+    Megaphone,
+    DollarSign,
+    CheckCircle2,
+    Clock,
+    TrendingUp,
+    AlertCircle,
+    ArrowUpRight
+} from "lucide-react";
+import { Link } from "react-router-dom";
+
+export default function ClientDashboard() {
+    const [stats, setStats] = useState({
+        activeCampaigns: 0,
+        totalBudget: 0,
+        spent: 0,
+        pendingApprovals: 0,
+        approvedItems: 0,
+        pendingInvoices: 0
+    });
+
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // TODO: Fetch real data from API
+        setTimeout(() => {
+            setStats({
+                activeCampaigns: 5,
+                totalBudget: 125000,
+                spent: 78500,
+                pendingApprovals: 8,
+                approvedItems: 24,
+                pendingInvoices: 2
+            });
+            setLoading(false);
+        }, 500);
+    }, []);
+
+    const kpiCards = [
+        {
+            title: "Active Campaigns",
+            value: stats.activeCampaigns,
+            icon: Megaphone,
+            color: "blue",
+            link: "/client-dashboard/campaigns"
+        },
+        {
+            title: "Total Budget",
+            value: `$${stats.totalBudget.toLocaleString()}`,
+            icon: DollarSign,
+            color: "green"
+        },
+        {
+            title: "Spent",
+            value: `$${stats.spent.toLocaleString()}`,
+            icon: DollarSign,
+            color: "emerald",
+            subValue: `${((stats.spent / stats.totalBudget) * 100).toFixed(1)}% of budget`
+        },
+        {
+            title: "Pending Approvals",
+            value: stats.pendingApprovals,
+            icon: CheckCircle2,
+            color: "amber",
+            link: "/client-dashboard/approvals"
+        }
+    ];
+
+    const recentActivities = [
+        { id: 1, type: "approval", message: "Campaign 'Q1 Social Media' requires your approval", time: "2 hours ago", link: "/client-dashboard/approvals" },
+        { id: 2, type: "campaign", message: "New campaign assets uploaded", time: "4 hours ago", link: "/client-dashboard/campaigns" },
+        { id: 3, type: "invoice", message: "Invoice #1234 ready for payment", time: "1 day ago", link: "/client-dashboard/billing" },
+        { id: 4, type: "message", message: "New message from agency team", time: "2 days ago", link: "/client-dashboard/messages" },
+    ];
+
+    return (
+        <div className="space-y-6">
+            {/* Page Header */}
+            <div>
+                <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
+                <p className="text-slate-400">Welcome back! Here's an overview of your campaigns and activities.</p>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {kpiCards.map((card, index) => {
+                    const Icon = card.icon;
+                    const colorClasses = {
+                        emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+                        blue: "bg-blue-500/10 border-blue-500/20 text-blue-400",
+                        green: "bg-green-500/10 border-green-500/20 text-green-400",
+                        amber: "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                    };
+                    const CardWrapper = card.link ? Link : "div";
+                    const cardProps = card.link ? { to: card.link } : {};
+                    
+                    return (
+                        <CardWrapper
+                            key={index}
+                            {...cardProps}
+                            className={`bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 hover:border-slate-600/50 transition-all ${card.link ? 'cursor-pointer' : ''}`}
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <div className={`p-3 rounded-xl ${colorClasses[card.color]}`}>
+                                    <Icon size={24} />
+                                </div>
+                                {card.subValue && (
+                                    <span className="text-xs text-slate-400">{card.subValue}</span>
+                                )}
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-1">{card.value}</h3>
+                            <p className="text-slate-400 text-sm">{card.title}</p>
+                        </CardWrapper>
+                    );
+                })}
+            </div>
+
+            {/* Budget Overview & Recent Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Budget Overview */}
+                <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 className="text-xl font-bold text-white mb-1">Budget Overview</h2>
+                            <p className="text-slate-400 text-sm">All active campaigns</p>
+                        </div>
+                        <TrendingUp className="text-emerald-400" size={24} />
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-slate-300">Spent</span>
+                                <span className="text-white font-semibold">${stats.spent.toLocaleString()}</span>
+                            </div>
+                            <div className="w-full bg-slate-700/50 rounded-full h-3">
+                                <div
+                                    className="h-3 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+                                    style={{ width: `${(stats.spent / stats.totalBudget) * 100}%` }}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between mt-2">
+                                <span className="text-slate-400 text-sm">Total Budget</span>
+                                <span className="text-slate-400 text-sm">${stats.totalBudget.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <div className="pt-4 border-t border-slate-700/50 grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-slate-400 text-sm">Remaining</p>
+                                <p className="text-xl font-bold text-white">${(stats.totalBudget - stats.spent).toLocaleString()}</p>
+                            </div>
+                            <div>
+                                <p className="text-slate-400 text-sm">Approved Items</p>
+                                <p className="text-xl font-bold text-emerald-400">{stats.approvedItems}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Recent Activity */}
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold text-white">Recent Activity</h2>
+                    </div>
+                    <div className="space-y-4">
+                        {recentActivities.map((activity) => (
+                            <Link
+                                key={activity.id}
+                                to={activity.link}
+                                className="flex items-start gap-3 p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 transition-all block"
+                            >
+                                <div className="w-2 h-2 rounded-full bg-emerald-400 mt-2"></div>
+                                <div className="flex-1">
+                                    <p className="text-slate-300 text-sm">{activity.message}</p>
+                                    <p className="text-slate-500 text-xs mt-1">{activity.time}</p>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Alerts Section */}
+            {stats.pendingApprovals > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
+                    <div className="flex items-center gap-3">
+                        <AlertCircle className="text-amber-400" size={24} />
+                        <div className="flex-1">
+                            <h3 className="text-white font-semibold">Action Required</h3>
+                            <p className="text-slate-400 text-sm">
+                                You have {stats.pendingApprovals} pending approval{stats.pendingApprovals > 1 ? 's' : ''} that need your attention.
+                            </p>
+                        </div>
+                        <Link
+                            to="/client-dashboard/approvals"
+                            className="px-4 py-2 bg-amber-500/20 text-amber-400 rounded-xl hover:bg-amber-500/30 transition-all text-sm font-medium"
+                        >
+                            Review Approvals
+                        </Link>
+                    </div>
+                </div>
+            )}
+
+            {stats.pendingInvoices > 0 && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6">
+                    <div className="flex items-center gap-3">
+                        <AlertCircle className="text-blue-400" size={24} />
+                        <div className="flex-1">
+                            <h3 className="text-white font-semibold">Pending Invoices</h3>
+                            <p className="text-slate-400 text-sm">
+                                You have {stats.pendingInvoices} invoice{stats.pendingInvoices > 1 ? 's' : ''} waiting for payment.
+                            </p>
+                        </div>
+                        <Link
+                            to="/client-dashboard/billing"
+                            className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-500/30 transition-all text-sm font-medium"
+                        >
+                            View Invoices
+                        </Link>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

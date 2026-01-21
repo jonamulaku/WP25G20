@@ -41,11 +41,13 @@ namespace WP25G20.Services
                     .ThenInclude(c => c.Client)
                 .Include(t => t.Campaign)
                     .ThenInclude(c => c.CampaignUsers)
+                .Include(t => t.AssignedToTeamMember)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.CreatedBy)
                 .AsQueryable();
 
             // If userId provided and not admin, filter to only show tasks user has access to
+            // Note: For team members, they will access via their own dashboard later
             if (!string.IsNullOrEmpty(userId) && (isAdmin == null || !isAdmin.Value))
             {
                 query = query.Where(t => t.CreatedById == userId || 
@@ -77,6 +79,13 @@ namespace WP25G20.Services
                     if (int.TryParse(filter.Filters["CampaignId"], out var campaignId))
                     {
                         query = query.Where(t => t.CampaignId == campaignId);
+                    }
+                }
+                if (filter.Filters.ContainsKey("AssignedToTeamMemberId"))
+                {
+                    if (int.TryParse(filter.Filters["AssignedToTeamMemberId"], out var teamMemberId))
+                    {
+                        query = query.Where(t => t.AssignedToTeamMemberId == teamMemberId);
                     }
                 }
                 if (filter.Filters.ContainsKey("AssignedToId"))
@@ -119,6 +128,9 @@ namespace WP25G20.Services
                     Description = t.Description,
                     CampaignId = t.CampaignId,
                     CampaignName = t.Campaign.Name,
+                    AssignedToTeamMemberId = t.AssignedToTeamMemberId,
+                    AssignedToTeamMemberName = t.AssignedToTeamMember != null ? $"{t.AssignedToTeamMember.FirstName} {t.AssignedToTeamMember.LastName}" : null,
+                    AssignedToTeamMemberRole = t.AssignedToTeamMember != null ? t.AssignedToTeamMember.Role : null,
                     AssignedToId = t.AssignedToId,
                     AssignedToName = t.AssignedTo != null ? $"{t.AssignedTo.FirstName} {t.AssignedTo.LastName}" : null,
                     DueDate = t.DueDate,
@@ -194,6 +206,9 @@ namespace WP25G20.Services
                 Description = task.Description,
                 CampaignId = task.CampaignId,
                 CampaignName = task.Campaign.Name,
+                AssignedToTeamMemberId = task.AssignedToTeamMemberId,
+                AssignedToTeamMemberName = task.AssignedToTeamMember != null ? $"{task.AssignedToTeamMember.FirstName} {task.AssignedToTeamMember.LastName}" : null,
+                AssignedToTeamMemberRole = task.AssignedToTeamMember != null ? task.AssignedToTeamMember.Role : null,
                 AssignedToId = task.AssignedToId,
                 AssignedToName = task.AssignedTo != null ? $"{task.AssignedTo.FirstName} {task.AssignedTo.LastName}" : null,
                 DueDate = task.DueDate,
@@ -218,7 +233,7 @@ namespace WP25G20.Services
                 Title = dto.Title,
                 Description = dto.Description,
                 CampaignId = dto.CampaignId,
-                AssignedToId = dto.AssignedToId,
+                AssignedToTeamMemberId = dto.AssignedToTeamMemberId,
                 DueDate = dto.DueDate,
                 Priority = Enum.TryParse<TaskPriority>(dto.Priority, out var priority) ? priority : TaskPriority.Medium,
                 Status = TaskStatus.Pending,
@@ -259,7 +274,7 @@ namespace WP25G20.Services
 
             task.Title = dto.Title;
             task.Description = dto.Description;
-            task.AssignedToId = dto.AssignedToId;
+            task.AssignedToTeamMemberId = dto.AssignedToTeamMemberId;
             task.DueDate = dto.DueDate;
             task.Notes = dto.Notes;
 

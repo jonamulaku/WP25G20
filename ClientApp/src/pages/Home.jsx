@@ -42,28 +42,28 @@ import { Link } from "react-router-dom";
 
 const services = [
     {
-        icon: StrategyIcon,
-        title: "Strategic Planning",
-        desc: "Data-driven strategies for sustainable growth and market leadership",
-        features: ["Market Analysis", "Competitive Research", "Growth Planning"],
-    },
-    {
         icon: MarketingIcon,
-        title: "Marketing & PR",
-        desc: "Amplify your brand presence and reach your target audience effectively",
-        features: ["Brand Awareness", "Media Relations", "Campaign Management"],
+        title: "Digital Marketing",
+        desc: "Comprehensive digital marketing solutions including social media management and paid advertising campaigns",
+        features: ["Social Media Management", "Paid Ads", "Content Strategy"],
     },
     {
         icon: DesignIcon,
-        title: "Design & Production",
-        desc: "Stunning visuals that captivate audiences and drive engagement",
-        features: ["Creative Design", "Content Production", "Visual Identity"],
+        title: "Graphic Design",
+        desc: "Creative and professional graphic design services that bring your brand to life",
+        features: ["Brand Identity", "Visual Design", "Creative Assets"],
+    },
+    {
+        icon: StrategyIcon,
+        title: "Campaign Management",
+        desc: "End-to-end campaign management from strategy to execution and optimization",
+        features: ["Campaign Strategy", "Execution", "Performance Tracking"],
     },
     {
         icon: ResearchIcon,
-        title: "Research & Training",
-        desc: "Deep insights and skill development to stay ahead of the curve",
-        features: ["Market Research", "Training Programs", "Industry Insights"],
+        title: "Analytics Reports",
+        desc: "Data-driven insights and comprehensive analytics reports to measure and improve performance",
+        features: ["Performance Analytics", "Data Insights", "ROI Reporting"],
     },
 ];
 
@@ -389,10 +389,10 @@ export default function Home() {
                             <span>Our Expertise</span>
                         </div>
                         <h2 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-4">
-                            What Do We Help?
+                            What Do We Do?
                         </h2>
                         <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                            Comprehensive solutions tailored to your business needs, delivered with precision and excellence
+                            We provide comprehensive digital marketing, design, and analytics services to help your business grow
                         </p>
                     </div>
 

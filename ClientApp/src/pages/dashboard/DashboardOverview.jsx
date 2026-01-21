@@ -10,6 +10,7 @@ import {
     ArrowUpRight,
     ArrowDownRight
 } from "lucide-react";
+import { clientsAPI, campaignsAPI, tasksAPI } from "../../services/api";
 
 export default function DashboardOverview() {
     const [stats, setStats] = useState({
@@ -21,22 +22,78 @@ export default function DashboardOverview() {
         overdueTasks: 0
     });
 
+    const [campaignStatuses, setCampaignStatuses] = useState({
+        active: 0,
+        completed: 0,
+        pending: 0
+    });
+
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // TODO: Fetch real data from API
-        // For now, using mock data
-        setTimeout(() => {
-            setStats({
-                activeClients: 24,
-                activeCampaigns: 18,
-                monthlyRevenue: 125000,
-                pendingTasks: 12,
-                completedTasks: 45,
-                overdueTasks: 3
-            });
-            setLoading(false);
-        }, 500);
+        const fetchStats = async () => {
+            try {
+                // Fetch all data
+                const [clientsRes, campaignsRes, tasksRes] = await Promise.all([
+                    clientsAPI.getAll({ pageSize: 1000 }),
+                    campaignsAPI.getAll({ pageSize: 1000 }),
+                    tasksAPI.getAll({ pageSize: 1000 })
+                ]);
+
+                const clients = clientsRes.items || [];
+                const campaigns = campaignsRes.items || [];
+                const tasks = tasksRes.items || [];
+
+                // Calculate stats
+                const activeClients = clients.filter(c => c.isActive).length;
+                const activeCampaigns = campaigns.filter(c => c.status === 'Active').length;
+                
+                // Calculate monthly revenue (sum of active campaign budgets)
+                const currentMonth = new Date().getMonth();
+                const currentYear = new Date().getFullYear();
+                const monthlyRevenue = campaigns
+                    .filter(c => {
+                        const startDate = new Date(c.startDate);
+                        return c.status === 'Active' && 
+                               startDate.getMonth() === currentMonth && 
+                               startDate.getFullYear() === currentYear;
+                    })
+                    .reduce((sum, c) => sum + (parseFloat(c.budget) || 0), 0);
+
+                // Task stats
+                const pendingTasks = tasks.filter(t => t.status === 'Pending' || t.status === 'In Progress').length;
+                const completedTasks = tasks.filter(t => t.status === 'Completed').length;
+                const now = new Date();
+                const overdueTasks = tasks.filter(t => {
+                    if (t.status === 'Completed') return false;
+                    if (!t.dueDate) return false;
+                    return new Date(t.dueDate) < now;
+                }).length;
+
+                // Campaign status counts
+                const campaignStatuses = {
+                    active: campaigns.filter(c => c.status === 'Active').length,
+                    completed: campaigns.filter(c => c.status === 'Completed').length,
+                    pending: campaigns.filter(c => c.status === 'Pending' || c.status === 'Planning').length
+                };
+
+                setStats({
+                    activeClients,
+                    activeCampaigns,
+                    monthlyRevenue,
+                    pendingTasks,
+                    completedTasks,
+                    overdueTasks
+                });
+                setCampaignStatuses(campaignStatuses);
+            } catch (error) {
+                console.error('Error fetching dashboard stats:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStats();
     }, []);
 
     const kpiCards = [
@@ -202,23 +259,27 @@ export default function DashboardOverview() {
                     <h2 className="text-xl font-bold text-white mb-6">Campaign Performance</h2>
                     <div className="space-y-4">
                         {[
-                            { name: "Active", count: 12, color: "emerald" },
-                            { name: "Completed", count: 8, color: "blue" },
-                            { name: "Pending", count: 3, color: "amber" }
-                        ].map((status, index) => (
-                            <div key={index}>
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-slate-300">{status.name}</span>
-                                    <span className="text-white font-semibold">{status.count}</span>
+                            { name: "Active", count: campaignStatuses.active, color: "emerald" },
+                            { name: "Completed", count: campaignStatuses.completed, color: "blue" },
+                            { name: "Pending", count: campaignStatuses.pending, color: "amber" }
+                        ].map((status, index) => {
+                            const total = campaignStatuses.active + campaignStatuses.completed + campaignStatuses.pending;
+                            const percentage = total > 0 ? (status.count / total) * 100 : 0;
+                            return (
+                                <div key={index}>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-slate-300">{status.name}</span>
+                                        <span className="text-white font-semibold">{status.count}</span>
+                                    </div>
+                                    <div className="w-full bg-slate-700/50 rounded-full h-2">
+                                        <div
+                                            className={`h-2 rounded-full bg-${status.color}-500`}
+                                            style={{ width: `${percentage}%` }}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="w-full bg-slate-700/50 rounded-full h-2">
-                                    <div
-                                        className={`h-2 rounded-full bg-${status.color}-500`}
-                                        style={{ width: `${(status.count / 23) * 100}%` }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 

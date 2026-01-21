@@ -13,6 +13,7 @@ import AboutUs from "./pages/AboutUs";
 import Services from "./pages/Services";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
+import Contact from "./pages/Contact";
 
 import DashboardOverview from "./pages/dashboard/DashboardOverview";
 import ClientsPage from "./pages/dashboard/ClientsPage";
@@ -107,6 +108,11 @@ export default function App() {
             <Route
                 path="/signup"
                 element={<SignUp />}
+            />
+
+            <Route
+                path="/contact"
+                element={<Contact />}
             />
 
             {/* Admin Dashboard Routes */}

@@ -1,11 +1,15 @@
-import { useState } from "react";
-import { Menu, X } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Menu, X, LayoutDashboard } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Logo from "../assets/logos/Group.svg";
+import { authAPI } from "../services/api";
 
 export default function Navbar() {
     const [open, setOpen] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate();
 
     const navLinks = [
         { path: "/", label: "Home" },
@@ -15,6 +19,32 @@ export default function Navbar() {
     ];
 
     const isActive = (path) => location.pathname === path;
+
+    // Check authentication status and admin role
+    useEffect(() => {
+        const checkAuth = () => {
+            const user = authAPI.getCurrentUser();
+            setIsLoggedIn(!!user);
+            setIsAdmin(user?.roles?.includes('Admin') || false);
+        };
+
+        // Check on mount
+        checkAuth();
+
+        // Listen for auth changes (login/logout)
+        window.addEventListener('authChange', checkAuth);
+
+        return () => {
+            window.removeEventListener('authChange', checkAuth);
+        };
+    }, []);
+
+    const handleLogout = () => {
+        authAPI.logout();
+        setIsLoggedIn(false);
+        navigate("/");
+        setOpen(false);
+    };
 
     return (
         <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-lg border-b border-slate-200/50 shadow-sm">
@@ -51,23 +81,44 @@ export default function Navbar() {
                         </Link>
                     </div>
 
-                    {/* CONTACT & LOGIN BUTTONS - Desktop */}
+                    {/* CONTACT & LOGIN/LOGOUT BUTTONS - Desktop */}
                     <div className="hidden lg:flex items-center gap-4 flex-1 justify-end">
+                        {isAdmin && (
+                            <Link
+                                to="/dashboard"
+                                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold
+                                         hover:bg-emerald-700 transition-all duration-300 shadow-lg shadow-emerald-600/20
+                                         hover:shadow-xl hover:shadow-emerald-600/30 hover:scale-105"
+                            >
+                                <LayoutDashboard size={18} />
+                                Dashboard
+                            </Link>
+                        )}
+                        {isLoggedIn ? (
+                            <button
+                                onClick={handleLogout}
+                                className="px-6 py-2.5 bg-white text-red-600 rounded-xl font-semibold border-2 border-red-600
+                                         hover:bg-red-50 transition-all duration-300 hover:scale-105"
+                            >
+                                Logout
+                            </button>
+                        ) : (
+                            <Link
+                                to="/login"
+                                className="px-6 py-2.5 bg-white text-emerald-600 rounded-xl font-semibold border-2 border-emerald-600
+                                         hover:bg-emerald-50 transition-all duration-300 hover:scale-105"
+                            >
+                                Login
+                            </Link>
+                        )}
                         <Link
-                            to="/login"
-                            className="px-6 py-2.5 bg-white text-emerald-600 rounded-xl font-semibold border-2 border-emerald-600
-                                     hover:bg-emerald-50 transition-all duration-300 hover:scale-105"
-                        >
-                            Login
-                        </Link>
-                        <a
-                            href="mailto:test@test.com"
+                            to="/contact"
                             className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold
                                      hover:bg-emerald-700 transition-all duration-300 shadow-lg shadow-emerald-600/20
                                      hover:shadow-xl hover:shadow-emerald-600/30 hover:scale-105"
                         >
                             Contact
-                        </a>
+                        </Link>
                     </div>
 
                     {/* MOBILE MENU BUTTON */}
@@ -101,22 +152,43 @@ export default function Navbar() {
                                 {link.label}
                             </Link>
                         ))}
+                        {isAdmin && (
+                            <Link
+                                to="/dashboard"
+                                onClick={() => setOpen(false)}
+                                className="flex items-center gap-2 block w-full mt-4 px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold
+                                         text-center hover:bg-emerald-700 transition-all duration-300"
+                            >
+                                <LayoutDashboard size={18} />
+                                Dashboard
+                            </Link>
+                        )}
+                        {isLoggedIn ? (
+                            <button
+                                onClick={handleLogout}
+                                className="block w-full mt-4 px-6 py-3 bg-white text-red-600 rounded-xl font-semibold border-2 border-red-600
+                                         text-center hover:bg-red-50 transition-all duration-300"
+                            >
+                                Logout
+                            </button>
+                        ) : (
+                            <Link
+                                to="/login"
+                                onClick={() => setOpen(false)}
+                                className="block w-full mt-4 px-6 py-3 bg-white text-emerald-600 rounded-xl font-semibold border-2 border-emerald-600
+                                         text-center hover:bg-emerald-50 transition-all duration-300"
+                            >
+                                Login
+                            </Link>
+                        )}
                         <Link
-                            to="/login"
-                            onClick={() => setOpen(false)}
-                            className="block w-full mt-4 px-6 py-3 bg-white text-emerald-600 rounded-xl font-semibold border-2 border-emerald-600
-                                     text-center hover:bg-emerald-50 transition-all duration-300"
-                        >
-                            Login
-                        </Link>
-                        <a
-                            href="mailto:test@test.com"
+                            to="/contact"
                             onClick={() => setOpen(false)}
                             className="block w-full px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold
                                      text-center hover:bg-emerald-700 transition-all duration-300"
                         >
                             Contact
-                        </a>
+                        </Link>
                     </div>
                 </div>
             </nav>

@@ -14,7 +14,8 @@ import {
     Bell,
     Search,
     LogOut,
-    User
+    User,
+    Home
 } from "lucide-react";
 import { authAPI } from "../services/api";
 import Logo from "../assets/logos/Group.svg";
@@ -173,6 +174,15 @@ export default function DashboardLayout() {
 
                         {/* Right Side Actions */}
                         <div className="flex items-center gap-4">
+                            {/* Back to Homepage Button */}
+                            <Link
+                                to="/"
+                                className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all text-sm font-medium"
+                            >
+                                <Home size={18} />
+                                <span className="hidden sm:inline">Back to Homepage</span>
+                            </Link>
+
                             {/* Notifications */}
                             <button className="relative p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all">
                                 <Bell size={20} />

@@ -184,6 +184,18 @@ namespace WP25G20.Data
             var adminUser = await userManager.FindByEmailAsync("admin@marketingagency.com");
             var adminUserId = adminUser?.Id;
 
+            // IMPORTANT: Only seed if database is completely empty
+            // This prevents overwriting shared development data
+            var hasAnyData = await context.Services.AnyAsync() || 
+                            await context.Clients.AnyAsync() || 
+                            await context.Campaigns.AnyAsync();
+            
+            if (hasAnyData)
+            {
+                Console.WriteLine("Database already contains data. Skipping sample data seeding to preserve shared data.");
+                return;
+            }
+
             // Seed Services
             if (!await context.Services.AnyAsync())
             {

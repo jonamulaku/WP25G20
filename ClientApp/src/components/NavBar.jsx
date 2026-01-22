@@ -13,10 +13,12 @@ export default function Navbar() {
 
     const navLinks = [
         { path: "/", label: "Home" },
-        { path: "/team", label: "Team" },
+        { path: "/about", label: "About" },
         { path: "/projects", label: "Projects" },
+        { path: "/team", label: "Team" },
         { path: "/news", label: "News" },
     ];
+
 
     const isActive = (path) => location.pathname === path;
 

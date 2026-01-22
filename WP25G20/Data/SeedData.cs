@@ -117,6 +117,68 @@ namespace WP25G20.Data
                     await userManager.AddToRoleAsync(clientUser, "Client");
                 }
             }
+
+            // Create team member users
+            var teamMemberCredentials = new[]
+            {
+                new
+                {
+                    Email = "alex.martinez@marketingagency.com",
+                    Password = "Team123!",
+                    FirstName = "Alex",
+                    LastName = "Martinez",
+                    Role = "User"
+                },
+                new
+                {
+                    Email = "sarah.chen@marketingagency.com",
+                    Password = "Team123!",
+                    FirstName = "Sarah",
+                    LastName = "Chen",
+                    Role = "User"
+                },
+                new
+                {
+                    Email = "michael.thompson@marketingagency.com",
+                    Password = "Team123!",
+                    FirstName = "Michael",
+                    LastName = "Thompson",
+                    Role = "User"
+                }
+            };
+
+            foreach (var cred in teamMemberCredentials)
+            {
+                var teamUser = await userManager.FindByEmailAsync(cred.Email);
+                if (teamUser == null)
+                {
+                    teamUser = new ApplicationUser
+                    {
+                        UserName = cred.Email,
+                        Email = cred.Email,
+                        EmailConfirmed = true,
+                        FirstName = cred.FirstName,
+                        LastName = cred.LastName,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    var result = await userManager.CreateAsync(teamUser, cred.Password);
+                    if (result.Succeeded)
+                    {
+                        await userManager.AddToRoleAsync(teamUser, cred.Role);
+                        Console.WriteLine($"Team member user created: {cred.Email} / {cred.Password}");
+                    }
+                }
+                else
+                {
+                    // Ensure team member has User role
+                    if (!await userManager.IsInRoleAsync(teamUser, cred.Role))
+                    {
+                        await userManager.AddToRoleAsync(teamUser, cred.Role);
+                    }
+                }
+            }
         }
 
         public static async System.Threading.Tasks.Task SeedTeamMembersAsync(IServiceProvider serviceProvider)

@@ -57,6 +57,18 @@ const styles = `
     0%, 100% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
   }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+    50% { box-shadow: 0 0 40px rgba(16, 185, 129, 0.6); }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
   .animate-fade-in {
     animation: fade-in 0.8s ease-out;
   }
@@ -70,6 +82,15 @@ const styles = `
     background-size: 200% auto;
     animation: gradient 3s linear infinite;
   }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  .animate-slide-up {
+    animation: slide-up 0.8s ease-out forwards;
+  }
 `;
 
 /* ============================== DATA ============================== */
@@ -80,18 +101,33 @@ const services = [
     title: "Digital Marketing & Performance",
     desc: "Our digital marketing specialists drive your online presence with strategic campaigns, social media management, SEO optimization, and data-driven marketing solutions that deliver measurable results.",
     features: ["Social Media Management", "SEO & Content Strategy", "Paid Advertising", "Analytics & Reporting"],
+    image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop",
+    gradient: "from-blue-500/20 via-emerald-500/20 to-purple-500/20",
+    stat: "340%",
+    statLabel: "Average ROI",
+    iconBg: "from-blue-500 to-cyan-500",
   },
   {
     icon: DesignIcon,
     title: "Branding & Creative Design",
     desc: "Our creative graphic designers transform your brand vision into compelling visual identities, marketing materials, and digital assets that captivate your audience and strengthen brand recognition.",
     features: ["Brand Identity Design", "Marketing Materials", "Digital Graphics", "Visual Content Creation"],
+    image: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800&h=600&fit=crop",
+    gradient: "from-pink-500/20 via-rose-500/20 to-orange-500/20",
+    stat: "500+",
+    statLabel: "Brands Designed",
+    iconBg: "from-pink-500 to-rose-500",
   },
   {
     icon: StrategyIcon,
     title: "Campaign Strategy & Management",
     desc: "Our experienced campaign managers orchestrate end-to-end marketing campaigns, from strategic planning and creative development to execution, optimization, and performance analysis.",
     features: ["Campaign Strategy", "Multi-Channel Execution", "Performance Optimization", "ROI Tracking"],
+    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=600&fit=crop",
+    gradient: "from-emerald-500/20 via-teal-500/20 to-cyan-500/20",
+    stat: "860+",
+    statLabel: "Campaigns Launched",
+    iconBg: "from-emerald-500 to-teal-500",
   },
 ];
 
@@ -406,8 +442,13 @@ export default function Home() {
         </section>
 
         {/* ================= SERVICES ================= */}
-        <section className="py-24 bg-white">
-          <div className="container mx-auto px-6 lg:px-24 xl:px-32">
+        <section className="py-24 bg-gradient-to-b from-white via-slate-50 to-white relative overflow-hidden">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-5" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%2310b981' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E")`,
+          }} />
+
+          <div className="container mx-auto px-6 lg:px-24 xl:px-32 relative z-10">
             <SectionHeader
               badgeIcon={Briefcase}
               badgeText="Our Expertise"
@@ -415,41 +456,80 @@ export default function Home() {
               desc="We provide comprehensive digital marketing, design, and analytics services to help your business grow"
             />
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
               {services.map((item, index) => (
                 <div
                   key={index}
-                  className="group relative bg-white rounded-3xl p-9 border-2 border-slate-200
-                           hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50
-                           transition-all duration-300 hover:-translate-y-1"
+                  className="group relative rounded-3xl overflow-hidden
+                           transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02]"
+                  style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  <div
-                    className="absolute inset-0 bg-gradient-to-br from-emerald-50/0 via-emerald-50/0 to-emerald-50/0
-                             group-hover:from-emerald-50/60 group-hover:via-emerald-50/30 group-hover:to-transparent 
-                             rounded-3xl transition-all duration-700"
-                  />
-                  <div className="relative z-10">
-                    <div
-                      className="w-24 h-24 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mb-7
-                               group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-105
-                               transition-all duration-300 shadow-md group-hover:shadow-lg"
-                    >
-                      <img src={item.icon} alt={item.title} className="w-14 h-14" />
+                  {/* Background Image with Overlay */}
+                  <div className="absolute inset-0">
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} group-hover:opacity-80 transition-opacity duration-500`} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="relative z-10 p-8 min-h-[600px] flex flex-col">
+                    {/* Icon with Animation */}
+                    <div className="mb-6">
+                      <div className={`relative w-20 h-20 rounded-2xl bg-gradient-to-br ${item.iconBg} 
+                                   flex items-center justify-center shadow-2xl
+                                   group-hover:scale-110 group-hover:rotate-6 transition-all duration-500
+                                   animate-float`}
+                        style={{ animationDelay: `${index * 0.2}s` }}>
+                        <div className="absolute inset-0 bg-white/20 rounded-2xl blur-xl group-hover:bg-white/30 transition-colors" />
+                        <img
+                          src={item.icon}
+                          alt={item.title}
+                          className="w-12 h-12 relative z-10 filter brightness-0 invert"
+                        />
+                      </div>
                     </div>
-                    <h3 className="text-2xl font-extrabold text-slate-900 mb-4 group-hover:text-emerald-700 transition-colors leading-tight">
+
+                    {/* Stat Badge */}
+                    <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md rounded-full border border-white/30">
+                      <div className="text-2xl font-extrabold text-white">{item.stat}</div>
+                      <div className="text-xs text-white/90 font-medium">{item.statLabel}</div>
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-2xl lg:text-3xl font-extrabold text-white mb-4 leading-tight group-hover:text-emerald-100 transition-colors">
                       {item.title}
                     </h3>
-                    <p className="text-slate-600 leading-relaxed mb-6 text-base font-light">{item.desc}</p>
+
+                    {/* Description */}
+                    <p className="text-white/90 leading-relaxed mb-6 text-base font-light flex-1">
+                      {item.desc}
+                    </p>
+
+                    {/* Features List */}
                     <ul className="space-y-3 mb-6">
                       {item.features.map((feature, i) => (
-                        <li key={i} className="flex items-center gap-3 text-sm text-slate-700 font-medium group-hover:text-slate-900 transition-colors">
-                          <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-                            <CheckCircle2 className="text-emerald-700 shrink-0" size={12} />
+                        <li
+                          key={i}
+                          className="flex items-center gap-3 text-sm text-white/95 font-medium
+                                   group-hover:text-white transition-colors
+                                   animate-slide-up"
+                          style={{ animationDelay: `${(index * 0.1) + (i * 0.05)}s` }}
+                        >
+                          <div className="w-6 h-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center 
+                                       group-hover:bg-emerald-500/50 transition-all duration-300
+                                       group-hover:scale-110">
+                            <CheckCircle2 className="text-white shrink-0" size={14} strokeWidth={3} />
                           </div>
                           <span>{feature}</span>
                         </li>
                       ))}
                     </ul>
+
+                    {/* CTA Button */}
                     <Link
                       to="/services#our-services"
                       onClick={() => {
@@ -462,13 +542,23 @@ export default function Home() {
                           }
                         }, 100);
                       }}
-                      className="group/btn inline-flex items-center gap-2 text-emerald-600 font-semibold 
-                               hover:text-emerald-700 transition-colors group-hover/btn:gap-3"
+                      className="group/btn inline-flex items-center justify-center gap-2 px-6 py-3 
+                               bg-white text-emerald-700 rounded-xl font-bold text-sm
+                               hover:bg-emerald-50 transition-all duration-300
+                               hover:scale-105 hover:shadow-xl hover:shadow-emerald-200/50
+                               border-2 border-transparent hover:border-emerald-100"
                     >
                       <span>View Details</span>
                       <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
                     </Link>
+
+                    {/* Decorative Elements */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors" />
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-colors" />
                   </div>
+
+                  {/* Hover Glow Effect */}
+                  <div className="absolute inset-0 rounded-3xl border-2 border-transparent group-hover:border-white/20 transition-all duration-500 pointer-events-none" />
                 </div>
               ))}
             </div>

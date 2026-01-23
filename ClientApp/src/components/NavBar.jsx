@@ -49,6 +49,16 @@ export default function Navbar() {
         setOpen(false);
     };
 
+    // Scroll to top when navigating
+    const handleNavClick = () => {
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: "instant"
+        });
+        setOpen(false);
+    };
+
     return (
         <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-lg border-b border-slate-200/50 shadow-sm">
             <nav className="container mx-auto px-6 lg:px-24 xl:px-32">
@@ -59,6 +69,7 @@ export default function Navbar() {
                             <Link
                                 key={link.path}
                                 to={link.path}
+                                onClick={handleNavClick}
                                 className={`relative px-3 py-2 font-medium transition-all duration-300
                                     ${isActive(link.path)
                                         ? "text-emerald-600"
@@ -75,7 +86,7 @@ export default function Navbar() {
 
                     {/* LOGO */}
                     <div className="flex-1 lg:flex-none flex justify-center lg:justify-start">
-                        <Link to="/" className="flex items-center group">
+                        <Link to="/" onClick={handleNavClick} className="flex items-center group">
                             <img
                                 src={Logo}
                                 alt="logo"
@@ -89,6 +100,7 @@ export default function Navbar() {
                         {isAdmin && (
                             <Link
                                 to="/dashboard"
+                                onClick={handleNavClick}
                                 className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold
                                          hover:bg-emerald-700 transition-all duration-300 shadow-lg shadow-emerald-600/20
                                          hover:shadow-xl hover:shadow-emerald-600/30 hover:scale-105"
@@ -108,6 +120,7 @@ export default function Navbar() {
                         ) : (
                             <Link
                                 to="/login"
+                                onClick={handleNavClick}
                                 className="px-6 py-2.5 bg-white text-emerald-600 rounded-xl font-semibold border-2 border-emerald-600
                                          hover:bg-emerald-50 transition-all duration-300 hover:scale-105"
                             >
@@ -116,6 +129,7 @@ export default function Navbar() {
                         )}
                         <Link
                             to="/contact"
+                            onClick={handleNavClick}
                             className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold
                                      hover:bg-emerald-700 transition-all duration-300 shadow-lg shadow-emerald-600/20
                                      hover:shadow-xl hover:shadow-emerald-600/30 hover:scale-105"
@@ -145,7 +159,7 @@ export default function Navbar() {
                             <Link
                                 key={link.path}
                                 to={link.path}
-                                onClick={() => setOpen(false)}
+                                onClick={handleNavClick}
                                 className={`block px-4 py-3 rounded-xl font-medium transition-all duration-300
                                     ${isActive(link.path)
                                         ? "bg-emerald-50 text-emerald-600"
@@ -158,7 +172,7 @@ export default function Navbar() {
                         {isAdmin && (
                             <Link
                                 to="/dashboard"
-                                onClick={() => setOpen(false)}
+                                onClick={handleNavClick}
                                 className="flex items-center gap-2 block w-full mt-4 px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold
                                          text-center hover:bg-emerald-700 transition-all duration-300"
                             >
@@ -177,7 +191,7 @@ export default function Navbar() {
                         ) : (
                             <Link
                                 to="/login"
-                                onClick={() => setOpen(false)}
+                                onClick={handleNavClick}
                                 className="block w-full mt-4 px-6 py-3 bg-white text-emerald-600 rounded-xl font-semibold border-2 border-emerald-600
                                          text-center hover:bg-emerald-50 transition-all duration-300"
                             >
@@ -186,7 +200,7 @@ export default function Navbar() {
                         )}
                         <Link
                             to="/contact"
-                            onClick={() => setOpen(false)}
+                            onClick={handleNavClick}
                             className="block w-full px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold
                                      text-center hover:bg-emerald-700 transition-all duration-300"
                         >

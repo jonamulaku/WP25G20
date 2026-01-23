@@ -12,8 +12,8 @@ using WP25G20.Data;
 namespace WP25G20.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260112113434_InitialMarketingAgency")]
-    partial class InitialMarketingAgency
+    [Migration("20260122155220_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -508,6 +508,70 @@ namespace WP25G20.Migrations
                     b.ToTable("Invoices");
                 });
 
+            modelBuilder.Entity("WP25G20.Models.Payment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("InvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("PaymentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("PaymentReference")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ProcessedById")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("ProcessedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TransactionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("PaymentNumber")
+                        .IsUnique();
+
+                    b.HasIndex("ProcessedById");
+
+                    b.ToTable("Payments");
+                });
+
             modelBuilder.Entity("WP25G20.Models.Service", b =>
                 {
                     b.Property<int>("Id")
@@ -560,6 +624,9 @@ namespace WP25G20.Migrations
                     b.Property<string>("AssignedToId")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int?>("AssignedToTeamMemberId")
+                        .HasColumnType("int");
+
                     b.Property<int>("CampaignId")
                         .HasColumnType("int");
 
@@ -600,6 +667,8 @@ namespace WP25G20.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AssignedToId");
+
+                    b.HasIndex("AssignedToTeamMemberId");
 
                     b.HasIndex("CampaignId");
 
@@ -683,6 +752,59 @@ namespace WP25G20.Migrations
                     b.HasIndex("UploadedById");
 
                     b.ToTable("TaskFiles");
+                });
+
+            modelBuilder.Entity("WP25G20.Models.TeamMember", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("TeamMembers");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -834,11 +956,34 @@ namespace WP25G20.Migrations
                     b.Navigation("CreatedBy");
                 });
 
+            modelBuilder.Entity("WP25G20.Models.Payment", b =>
+                {
+                    b.HasOne("WP25G20.Models.Invoice", "Invoice")
+                        .WithMany("Payments")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WP25G20.Models.ApplicationUser", "ProcessedBy")
+                        .WithMany()
+                        .HasForeignKey("ProcessedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("ProcessedBy");
+                });
+
             modelBuilder.Entity("WP25G20.Models.Task", b =>
                 {
                     b.HasOne("WP25G20.Models.ApplicationUser", "AssignedTo")
                         .WithMany("AssignedTasks")
                         .HasForeignKey("AssignedToId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("WP25G20.Models.TeamMember", "AssignedToTeamMember")
+                        .WithMany("AssignedTasks")
+                        .HasForeignKey("AssignedToTeamMemberId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("WP25G20.Models.Campaign", "Campaign")
@@ -853,6 +998,8 @@ namespace WP25G20.Migrations
                         .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("AssignedTo");
+
+                    b.Navigation("AssignedToTeamMember");
 
                     b.Navigation("Campaign");
 
@@ -920,6 +1067,11 @@ namespace WP25G20.Migrations
                     b.Navigation("Invoices");
                 });
 
+            modelBuilder.Entity("WP25G20.Models.Invoice", b =>
+                {
+                    b.Navigation("Payments");
+                });
+
             modelBuilder.Entity("WP25G20.Models.Service", b =>
                 {
                     b.Navigation("Campaigns");
@@ -930,6 +1082,11 @@ namespace WP25G20.Migrations
                     b.Navigation("TaskComments");
 
                     b.Navigation("TaskFiles");
+                });
+
+            modelBuilder.Entity("WP25G20.Models.TeamMember", b =>
+                {
+                    b.Navigation("AssignedTasks");
                 });
 #pragma warning restore 612, 618
         }

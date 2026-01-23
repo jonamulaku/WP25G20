@@ -1,0 +1,14 @@
+# Copy this file to docker-compose.override.yml and customize for your setup
+# docker-compose.override.yml is automatically loaded by docker-compose
+# and is gitignored, so each teammate can have their own settings
+
+# For teammates connecting to shared database:
+# Uncomment and update the webapp service with the host's IP address
+
+# services:
+#   webapp:
+#     environment:
+#       - ConnectionStrings__DefaultConnection=Server=192.168.0.65,1433;Database=WP25G20;User Id=sa;Password=YourStrongPassword123;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True;Connection Timeout=60;
+
+# For the host (person running the database):
+# Keep this file empty or don't create it - docker-compose.yml defaults will work

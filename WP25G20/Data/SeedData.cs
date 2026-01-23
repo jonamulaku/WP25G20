@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using WP25G20.Models;
-using TaskModel = WP25G20.Models.Task;
-using TaskStatus = WP25G20.Models.TaskStatus;
-using TaskPriority = WP25G20.Models.TaskPriority;
 
 namespace WP25G20.Data
 {
@@ -13,22 +11,35 @@ namespace WP25G20.Data
         {
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+            var logger = loggerFactory?.CreateLogger("SeedData");
 
-            // Create roles
-            string[] roles = { "Admin", "Client", "User" };
-            foreach (var role in roles)
+            try
             {
-                if (!await roleManager.RoleExistsAsync(role))
+                // Create roles
+                string[] roles = { "Admin", "Client", "User" };
+                foreach (var role in roles)
                 {
-                    await roleManager.CreateAsync(new IdentityRole(role));
+                    if (!await roleManager.RoleExistsAsync(role))
+                    {
+                        await roleManager.CreateAsync(new IdentityRole(role));
+                        logger?.LogInformation($"Role '{role}' created");
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error creating roles");
+                throw;
+            }
 
-            // Create admin user
-            var adminEmail = "admin@marketingagency.com";
-            var adminPassword = "Admin123!";
+            try
+            {
+                // Create admin user
+                var adminEmail = "admin@marketingagency.com";
+                var adminPassword = "Admin123!";
 
-            var adminUser = await userManager.FindByEmailAsync(adminEmail);
+                var adminUser = await userManager.FindByEmailAsync(adminEmail);
             if (adminUser == null)
             {
                 adminUser = new ApplicationUser
@@ -179,6 +190,12 @@ namespace WP25G20.Data
                     }
                 }
             }
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error creating users");
+                throw;
+            }
         }
 
         public static async System.Threading.Tasks.Task SeedTeamMembersAsync(IServiceProvider serviceProvider)
@@ -235,308 +252,6 @@ namespace WP25G20.Data
             }
 
             await context.SaveChangesAsync();
-        }
-
-        public static async System.Threading.Tasks.Task SeedSampleDataAsync(IServiceProvider serviceProvider)
-        {
-            var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
-            var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-
-            // Get admin user for CreatedById
-            var adminUser = await userManager.FindByEmailAsync("admin@marketingagency.com");
-            var adminUserId = adminUser?.Id;
-
-            // IMPORTANT: Only seed if database is completely empty
-            // This prevents overwriting shared development data
-            var hasAnyData = await context.Services.AnyAsync() || 
-                            await context.Clients.AnyAsync() || 
-                            await context.Campaigns.AnyAsync();
-            
-            if (hasAnyData)
-            {
-                Console.WriteLine("Database already contains data. Skipping sample data seeding to preserve shared data.");
-                return;
-            }
-
-            // Seed Services
-            if (!await context.Services.AnyAsync())
-            {
-                var services = new[]
-                {
-                    new Service
-                    {
-                        Name = "Digital Marketing",
-                        Description = "Comprehensive digital marketing services including social media and paid advertising",
-                        Deliverables = "Social media management, paid ad campaigns, SEO optimization",
-                        BasePrice = 2500.00m,
-                        PricingType = ServicePricingType.Monthly,
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow
-                    },
-                    new Service
-                    {
-                        Name = "Graphic Design",
-                        Description = "Professional graphic design services for campaigns and branding",
-                        Deliverables = "Logo design, marketing collateral, UI/UX design",
-                        BasePrice = 1500.00m,
-                        PricingType = ServicePricingType.ProjectBased,
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow
-                    },
-                    new Service
-                    {
-                        Name = "Campaign Management",
-                        Description = "End-to-end campaign management and optimization",
-                        Deliverables = "Strategy planning, execution, performance reporting",
-                        BasePrice = 3000.00m,
-                        PricingType = ServicePricingType.Monthly,
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow
-                    },
-                    new Service
-                    {
-                        Name = "Analytics & Reporting",
-                        Description = "Comprehensive analytics and performance reporting",
-                        Deliverables = "Performance tracking, trend analysis, actionable insights",
-                        BasePrice = 1200.00m,
-                        PricingType = ServicePricingType.Monthly,
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow
-                    }
-                };
-
-                context.Services.AddRange(services);
-                await context.SaveChangesAsync();
-                Console.WriteLine("Services seeded successfully");
-            }
-
-            // Seed Clients
-            if (!await context.Clients.AnyAsync())
-            {
-                var clients = new[]
-                {
-                    new Client
-                    {
-                        CompanyName = "TechStart Solutions",
-                        ContactPerson = "John Smith",
-                        Email = "john.smith@techstart.com",
-                        Phone = "+1 555-1001",
-                        Address = "123 Tech Street, San Francisco, CA 94102",
-                        Notes = "Fast-growing tech startup, needs aggressive marketing",
-                        IsActive = true,
-                        CreatedById = adminUserId,
-                        CreatedAt = DateTime.UtcNow
-                    },
-                    new Client
-                    {
-                        CompanyName = "GreenLife Organics",
-                        ContactPerson = "Sarah Johnson",
-                        Email = "sarah@greenlife.com",
-                        Phone = "+1 555-1002",
-                        Address = "456 Organic Ave, Portland, OR 97201",
-                        Notes = "Organic food company, focuses on sustainability",
-                        IsActive = true,
-                        CreatedById = adminUserId,
-                        CreatedAt = DateTime.UtcNow
-                    },
-                    new Client
-                    {
-                        CompanyName = "Fashion Forward Inc",
-                        ContactPerson = "Michael Chen",
-                        Email = "michael@fashionforward.com",
-                        Phone = "+1 555-1003",
-                        Address = "789 Fashion Blvd, New York, NY 10001",
-                        Notes = "Luxury fashion brand, seasonal campaigns",
-                        IsActive = true,
-                        CreatedById = adminUserId,
-                        CreatedAt = DateTime.UtcNow
-                    },
-                    new Client
-                    {
-                        CompanyName = "FitZone Gym",
-                        ContactPerson = "Emily Rodriguez",
-                        Email = "emily@fitzone.com",
-                        Phone = "+1 555-1004",
-                        Address = "321 Fitness Way, Los Angeles, CA 90001",
-                        Notes = "Local gym chain, needs local marketing",
-                        IsActive = true,
-                        CreatedById = adminUserId,
-                        CreatedAt = DateTime.UtcNow
-                    }
-                };
-
-                context.Clients.AddRange(clients);
-                await context.SaveChangesAsync();
-                Console.WriteLine("Clients seeded successfully");
-            }
-
-            // Seed Campaigns (need to get services and clients first)
-            if (!await context.Campaigns.AnyAsync())
-            {
-                var services = await context.Services.ToListAsync();
-                var clients = await context.Clients.ToListAsync();
-
-                if (services.Any() && clients.Any())
-                {
-                    var campaigns = new[]
-                    {
-                        new Campaign
-                        {
-                            Name = "Q1 Social Media Blitz",
-                            Description = "Comprehensive social media campaign for Q1 to increase brand awareness and engagement",
-                            ClientId = clients[0].Id,
-                            ServiceId = services[0].Id,
-                            StartDate = DateTime.UtcNow.AddDays(-30),
-                            EndDate = DateTime.UtcNow.AddDays(60),
-                            Budget = 15000.00m,
-                            Status = CampaignStatus.Active,
-                            Notes = "Focus on LinkedIn and Instagram",
-                            CreatedById = adminUserId,
-                            CreatedAt = DateTime.UtcNow.AddDays(-30)
-                        },
-                        new Campaign
-                        {
-                            Name = "Brand Identity Redesign",
-                            Description = "Complete brand identity redesign including logo, colors, and marketing materials",
-                            ClientId = clients[1].Id,
-                            ServiceId = services[1].Id,
-                            StartDate = DateTime.UtcNow.AddDays(-15),
-                            EndDate = DateTime.UtcNow.AddDays(45),
-                            Budget = 8000.00m,
-                            Status = CampaignStatus.Active,
-                            Notes = "Eco-friendly design focus",
-                            CreatedById = adminUserId,
-                            CreatedAt = DateTime.UtcNow.AddDays(-15)
-                        },
-                        new Campaign
-                        {
-                            Name = "Spring Collection Launch",
-                            Description = "Marketing campaign for spring fashion collection launch",
-                            ClientId = clients[2].Id,
-                            ServiceId = services[2].Id,
-                            StartDate = DateTime.UtcNow.AddDays(-7),
-                            EndDate = DateTime.UtcNow.AddDays(53),
-                            Budget = 25000.00m,
-                            Status = CampaignStatus.Active,
-                            Notes = "High-end luxury market",
-                            CreatedById = adminUserId,
-                            CreatedAt = DateTime.UtcNow.AddDays(-7)
-                        },
-                        new Campaign
-                        {
-                            Name = "New Year Fitness Challenge",
-                            Description = "Local marketing campaign for New Year fitness membership drive",
-                            ClientId = clients[3].Id,
-                            ServiceId = services[0].Id,
-                            StartDate = DateTime.UtcNow.AddDays(-10),
-                            EndDate = DateTime.UtcNow.AddDays(20),
-                            Budget = 5000.00m,
-                            Status = CampaignStatus.Active,
-                            Notes = "Target local community",
-                            CreatedById = adminUserId,
-                            CreatedAt = DateTime.UtcNow.AddDays(-10)
-                        }
-                    };
-
-                    context.Campaigns.AddRange(campaigns);
-                    await context.SaveChangesAsync();
-                    Console.WriteLine("Campaigns seeded successfully");
-
-                    // Seed Tasks (need campaigns and team members)
-                    var campaignsList = await context.Campaigns.ToListAsync();
-                    var teamMembers = await context.TeamMembers.ToListAsync();
-
-                    if (campaignsList.Any() && teamMembers.Any())
-                    {
-                        var tasks = new[]
-                        {
-                            new TaskModel
-                            {
-                                Title = "Create social media content calendar",
-                                Description = "Develop a comprehensive content calendar for Q1 social media campaign",
-                                CampaignId = campaignsList[0].Id,
-                                AssignedToTeamMemberId = teamMembers[0].Id, // Digital Marketing Specialist
-                                DueDate = DateTime.UtcNow.AddDays(5),
-                                Priority = TaskPriority.High,
-                                Status = TaskStatus.InProgress,
-                                Notes = "Include posts for LinkedIn and Instagram",
-                                CreatedById = adminUserId,
-                                CreatedAt = DateTime.UtcNow.AddDays(-25)
-                            },
-                            new TaskModel
-                            {
-                                Title = "Design new logo concepts",
-                                Description = "Create 3-5 logo concepts for brand identity redesign",
-                                CampaignId = campaignsList[1].Id,
-                                AssignedToTeamMemberId = teamMembers[1].Id, // Graphic Designer
-                                DueDate = DateTime.UtcNow.AddDays(10),
-                                Priority = TaskPriority.High,
-                                Status = TaskStatus.Pending,
-                                Notes = "Must reflect eco-friendly values",
-                                CreatedById = adminUserId,
-                                CreatedAt = DateTime.UtcNow.AddDays(-10)
-                            },
-                            new TaskModel
-                            {
-                                Title = "Set up paid ad campaigns",
-                                Description = "Configure Google Ads and Facebook Ads for spring collection launch",
-                                CampaignId = campaignsList[2].Id,
-                                AssignedToTeamMemberId = teamMembers[0].Id, // Digital Marketing Specialist
-                                DueDate = DateTime.UtcNow.AddDays(3),
-                                Priority = TaskPriority.Urgent,
-                                Status = TaskStatus.Pending,
-                                Notes = "Target high-income demographics",
-                                CreatedById = adminUserId,
-                                CreatedAt = DateTime.UtcNow.AddDays(-5)
-                            },
-                            new TaskModel
-                            {
-                                Title = "Develop campaign strategy",
-                                Description = "Create comprehensive campaign strategy document",
-                                CampaignId = campaignsList[2].Id,
-                                AssignedToTeamMemberId = teamMembers[2].Id, // Campaign Manager
-                                DueDate = DateTime.UtcNow.AddDays(7),
-                                Priority = TaskPriority.Medium,
-                                Status = TaskStatus.InProgress,
-                                Notes = "Include KPIs and success metrics",
-                                CreatedById = adminUserId,
-                                CreatedAt = DateTime.UtcNow.AddDays(-7)
-                            },
-                            new TaskModel
-                            {
-                                Title = "Create local flyers and posters",
-                                Description = "Design promotional materials for local gym marketing",
-                                CampaignId = campaignsList[3].Id,
-                                AssignedToTeamMemberId = teamMembers[1].Id, // Graphic Designer
-                                DueDate = DateTime.UtcNow.AddDays(2),
-                                Priority = TaskPriority.High,
-                                Status = TaskStatus.Completed,
-                                CompletedAt = DateTime.UtcNow.AddDays(-1),
-                                Notes = "Print-ready files needed",
-                                CreatedById = adminUserId,
-                                CreatedAt = DateTime.UtcNow.AddDays(-8)
-                            },
-                            new TaskModel
-                            {
-                                Title = "Monitor campaign performance",
-                                Description = "Track and analyze campaign metrics weekly",
-                                CampaignId = campaignsList[0].Id,
-                                AssignedToTeamMemberId = teamMembers[2].Id, // Campaign Manager
-                                DueDate = DateTime.UtcNow.AddDays(1),
-                                Priority = TaskPriority.Medium,
-                                Status = TaskStatus.Pending,
-                                Notes = "Generate weekly reports",
-                                CreatedById = adminUserId,
-                                CreatedAt = DateTime.UtcNow.AddDays(-20)
-                            }
-                        };
-
-                        context.Tasks.AddRange(tasks);
-                        await context.SaveChangesAsync();
-                        Console.WriteLine("Tasks seeded successfully");
-                    }
-                }
-            }
         }
     }
 }

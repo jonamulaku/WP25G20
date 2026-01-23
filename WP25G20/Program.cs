@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Linq;
 using System.Text;
 using WP25G20.Authorization;
 using WP25G20.Data;
@@ -190,6 +191,39 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // =========================================
+// CREATE DATABASE AND RUN MIGRATIONS
+// =========================================
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("DefaultConnection");
+    
+    try
+    {
+        logger.LogInformation("Setting up database...");
+        
+        // Apply migrations (this will create the database if it doesn't exist)
+        // MigrateAsync() will handle database creation automatically
+        logger.LogInformation("Applying migrations (database will be created if it doesn't exist)...");
+        await dbContext.Database.MigrateAsync();
+        logger.LogInformation("✅ Database setup successful");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "❌ Error setting up database");
+        logger.LogError($"Connection string being used: {connectionString ?? "NULL - Connection string not found!"}");
+        logger.LogError($"Full exception: {ex}");
+        logger.LogError("Please ensure:");
+        logger.LogError("  1. Docker container is running: docker-compose up -d");
+        logger.LogError("  2. Connection string in appsettings.Development.json is correct");
+        logger.LogError("  3. Check the actual exception details above for more information");
+        throw; // Stop application if database setup fails
+    }
+}
+
+// =========================================
 // PIPELINE
 // =========================================
 
@@ -258,9 +292,19 @@ if (app.Environment.IsDevelopment())
 {
     using (var scope = app.Services.CreateScope())
     {
-        await SeedData.SeedRolesAndAdminAsync(scope.ServiceProvider);
-        await SeedData.SeedTeamMembersAsync(scope.ServiceProvider);
-        await SeedData.SeedSampleDataAsync(scope.ServiceProvider);
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        try
+        {
+            await SeedData.SeedRolesAndAdminAsync(scope.ServiceProvider);
+            await SeedData.SeedTeamMembersAsync(scope.ServiceProvider);
+            // SeedSampleDataAsync removed - all business data (campaigns, services, tasks, clients)
+            // now comes from the shared database, ensuring all teammates see the same real data
+            logger.LogInformation("✅ Seed data completed successfully (users and team members only)");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "⚠️  Error seeding data, but application will continue");
+        }
     }
 }
 

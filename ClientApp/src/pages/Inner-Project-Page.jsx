@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowRight,
@@ -26,6 +26,7 @@ import { getProjectBySlug, getRelatedProjects } from "@/data/projectsData";
 export default function InnerProjectPage() {
   const { slug } = useParams();
   const [activeTab, setActiveTab] = useState("overview");
+  const prevSlugRef = useRef(slug);
 
   const project = useMemo(() => getProjectBySlug(slug), [slug]);
   const related = useMemo(() => {
@@ -33,10 +34,20 @@ export default function InnerProjectPage() {
     return getRelatedProjects(project.id, project.category);
   }, [project]);
 
-  // ✅ Scroll në TOP sa herë ndërron projekti (backup edhe nëse s’përdor ScrollToTop global)
+  // ✅ Scroll në TOP sa herë ndërron projekti (backup edhe nëse s'përdor ScrollToTop global)
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-    setActiveTab("overview");
+  }, [slug]);
+
+  // Reset tab when slug changes - separate effect to avoid cascading renders
+  useEffect(() => {
+    if (prevSlugRef.current !== slug) {
+      prevSlugRef.current = slug;
+      // Schedule state update in next event loop to avoid synchronous setState warning
+      Promise.resolve().then(() => {
+        setActiveTab("overview");
+      });
+    }
   }, [slug]);
 
   if (!project) {

@@ -1,13 +1,13 @@
-import CarnivalImg from "@/assets/images/carnival.png";
-import MusicEventImg from "@/assets/images/music event.png";
-import CampaignImg from "@/assets/images/campaign.png";
-
-import Image1 from "@/assets/images/image 1.png";
-import Image5 from "@/assets/images/image 5.png";
-import Image6 from "@/assets/images/image 6.png";
-import Image7 from "@/assets/images/image 7.png";
-import Image11 from "@/assets/images/image 11.png";
-import Image12 from "@/assets/images/image 12.png";
+// Using real photos from Unsplash for each project
+const CarnivalImg = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&h=600&fit=crop";
+const MusicEventImg = "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=600&fit=crop";
+const CampaignImg = "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop";
+const EducationImg = "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop";
+const LuxuryBrandImg = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&h=600&fit=crop";
+const SocialMediaImg = "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&h=600&fit=crop";
+const SustainabilityImg = "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800&h=600&fit=crop";
+const EcommerceImg = "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop";
+const HealthcareImg = "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=600&fit=crop";
 
 const slugify = (text) =>
   String(text || "")
@@ -25,7 +25,7 @@ export const projects = [
     category: "Events",
     type: "Campaigns",
     image: CarnivalImg,
-    heroImage: Image1,
+    heroImage: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200&h=800&fit=crop",
     client: "Community Foundation",
     year: "2023",
     location: "London, UK",
@@ -92,7 +92,7 @@ export const projects = [
     category: "Events",
     type: "Brand Strategy",
     image: MusicEventImg,
-    heroImage: MusicEventImg,
+    heroImage: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1200&h=800&fit=crop",
     client: "Festival Co.",
     year: "2023",
     location: "Manchester, UK",
@@ -131,7 +131,7 @@ export const projects = [
     category: "Corporate",
     type: "Digital Marketing",
     image: CampaignImg,
-    heroImage: CampaignImg,
+    heroImage: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200&h=800&fit=crop",
     client: "TechCorp Global",
     year: "2023",
     location: "Birmingham, UK",
@@ -169,8 +169,8 @@ export const projects = [
     title: "Educational Platform Launch",
     category: "Education",
     type: "Content Creation",
-    image: Image1,
-    heroImage: Image1,
+    image: EducationImg,
+    heroImage: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=1200&h=800&fit=crop",
     client: "EduTech Solutions",
     year: "2023",
     location: "Edinburgh, UK",
@@ -208,8 +208,8 @@ export const projects = [
     title: "Luxury Brand Rebranding",
     category: "Branding",
     type: "Brand Strategy",
-    image: Image5,
-    heroImage: Image5,
+    image: LuxuryBrandImg,
+    heroImage: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&h=800&fit=crop",
     client: "Luxury Brands Ltd",
     year: "2023",
     location: "London, UK",
@@ -247,8 +247,8 @@ export const projects = [
     title: "Social Media Campaign Suite",
     category: "Technology",
     type: "Social Media",
-    image: Image6,
-    heroImage: Image6,
+    image: SocialMediaImg,
+    heroImage: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=1200&h=800&fit=crop",
     client: "Startup Inc",
     year: "2023",
     location: "Bristol, UK",
@@ -286,8 +286,8 @@ export const projects = [
     title: "Corporate Sustainability Initiative",
     category: "Corporate",
     type: "Campaigns",
-    image: Image7,
-    heroImage: Image7,
+    image: SustainabilityImg,
+    heroImage: "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=1200&h=800&fit=crop",
     client: "GreenCorp",
     year: "2023",
     location: "Leeds, UK",
@@ -325,8 +325,8 @@ export const projects = [
     title: "E-commerce Platform Launch",
     category: "Technology",
     type: "Digital Marketing",
-    image: Image11,
-    heroImage: Image11,
+    image: EcommerceImg,
+    heroImage: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200&h=800&fit=crop",
     client: "RetailTech",
     year: "2023",
     location: "Liverpool, UK",
@@ -364,8 +364,8 @@ export const projects = [
     title: "Healthcare Awareness Campaign",
     category: "Education",
     type: "Content Creation",
-    image: Image12,
-    heroImage: Image12,
+    image: HealthcareImg,
+    heroImage: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1200&h=800&fit=crop",
     client: "Health Foundation",
     year: "2023",
     location: "Glasgow, UK",

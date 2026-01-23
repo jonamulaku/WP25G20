@@ -185,9 +185,6 @@ export default function AboutUs() {
                 {/* ================= HERO (SHORT) ================= */}
                 <section className="relative bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-600 overflow-hidden">
                     <PatternBg />
-                    
-                    {/* Animated gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/0 via-emerald-500/50 to-emerald-600/0 animate-pulse opacity-20"></div>
 
                     <div className="container mx-auto px-6 lg:px-24 xl:px-32 py-16 lg:py-20 relative z-10">
                         <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -262,8 +259,8 @@ export default function AboutUs() {
                             {/* Mission */}
                             <div className="relative group">
                                 <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-3xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500"></div>
-                                <div className="relative bg-gradient-to-br from-emerald-50 to-white rounded-3xl p-10 border-2 border-emerald-100 hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50 transition-all duration-700 hover:-translate-y-3 h-full">
-                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mb-6 group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-110 transition-all duration-500 shadow-md group-hover:shadow-lg">
+                                <div className="relative bg-gradient-to-br from-emerald-50 to-white rounded-3xl p-10 border-2 border-emerald-100 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50 transition-all duration-300 hover:-translate-y-1 h-full">
+                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mb-6 group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-105 transition-all duration-300 shadow-md group-hover:shadow-lg">
                                         <mission.icon className="text-emerald-600" size={32} />
                                     </div>
                                     <h3 className="text-3xl font-extrabold text-slate-900 mb-4 group-hover:text-emerald-700 transition-colors leading-tight">
@@ -278,8 +275,8 @@ export default function AboutUs() {
                             {/* Vision */}
                             <div className="relative group">
                                 <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-3xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500"></div>
-                                <div className="relative bg-gradient-to-br from-slate-50 to-white rounded-3xl p-10 border-2 border-slate-200 hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50 transition-all duration-700 hover:-translate-y-3 h-full">
-                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mb-6 group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-110 transition-all duration-500 shadow-md group-hover:shadow-lg">
+                                <div className="relative bg-gradient-to-br from-slate-50 to-white rounded-3xl p-10 border-2 border-slate-200 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50 transition-all duration-300 hover:-translate-y-1 h-full">
+                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mb-6 group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-105 transition-all duration-300 shadow-md group-hover:shadow-lg">
                                         <vision.icon className="text-emerald-600" size={32} />
                                     </div>
                                     <h3 className="text-3xl font-extrabold text-slate-900 mb-4 group-hover:text-emerald-700 transition-colors leading-tight">
@@ -309,12 +306,12 @@ export default function AboutUs() {
                                 <div
                                     key={index}
                                     className="group relative bg-white rounded-3xl p-9 border-2 border-slate-200
-                                             hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50
-                                             transition-all duration-700 hover:-translate-y-3"
+                                             hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50
+                                             transition-all duration-300 hover:-translate-y-1"
                                 >
                                     <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mb-4
-                                                  group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-110
-                                                  transition-all duration-500 shadow-md group-hover:shadow-lg">
+                                                  group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-105
+                                                  transition-all duration-300 shadow-md group-hover:shadow-lg">
                                         <value.icon className="text-emerald-600" size={28} />
                                     </div>
                                     <h3 className="text-xl font-extrabold text-slate-900 mb-3 group-hover:text-emerald-700 transition-colors leading-tight">
@@ -395,8 +392,8 @@ export default function AboutUs() {
                                 <div
                                     key={member.id}
                                     className="group relative bg-white rounded-3xl overflow-hidden border-2 border-slate-200
-                                             hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50
-                                             transition-all duration-700 hover:-translate-y-3"
+                                             hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50
+                                             transition-all duration-300 hover:-translate-y-1"
                                 >
                                     <div className="relative h-72 overflow-hidden">
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent z-10 
@@ -453,12 +450,12 @@ export default function AboutUs() {
                                 <div
                                     key={index}
                                     className="group relative bg-white rounded-3xl p-9 border-2 border-slate-200
-                                             hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50
-                                             transition-all duration-700 hover:-translate-y-3"
+                                             hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50
+                                             transition-all duration-300 hover:-translate-y-1"
                                 >
                                     <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mb-6
-                                                  group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-110
-                                                  transition-all duration-500 shadow-md group-hover:shadow-lg">
+                                                  group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-105
+                                                  transition-all duration-300 shadow-md group-hover:shadow-lg">
                                         <item.icon className="text-emerald-600" size={28} />
                                     </div>
                                     <h3 className="text-xl font-extrabold text-slate-900 mb-3 group-hover:text-emerald-700 transition-colors leading-tight">

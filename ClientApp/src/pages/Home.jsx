@@ -256,9 +256,6 @@ export default function Home() {
         <section className="relative bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-600 overflow-hidden min-h-[92vh] flex items-center">
           <PatternBg />
 
-          {/* Animated gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/0 via-emerald-500/50 to-emerald-600/0 animate-pulse opacity-20"></div>
-
           <div className="container mx-auto px-6 lg:px-24 xl:px-32 py-20 lg:py-32 relative z-10">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               {/* LEFT */}
@@ -271,7 +268,7 @@ export default function Home() {
                 <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold leading-[1.1] text-white tracking-tight">
                   We Turn Marketing Into
                   <br />
-                  <span className="bg-gradient-to-r from-emerald-100 via-white to-emerald-100 bg-clip-text text-transparent animate-gradient">
+                  <span className="bg-gradient-to-r from-emerald-100 via-white to-emerald-100 bg-clip-text text-transparent">
                     Measurable Growth
                   </span>
                 </h1>
@@ -384,8 +381,8 @@ export default function Home() {
                              hover:-translate-y-1"
                   >
                     <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mb-4 
-                                 group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-110
-                                 transition-all duration-500 shadow-sm group-hover:shadow-md">
+                                 group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-105
+                                 transition-all duration-300 shadow-sm group-hover:shadow-md">
                       <IconComponent className="text-emerald-700" size={26} />
                     </div>
                     <div className="text-center">
@@ -423,8 +420,8 @@ export default function Home() {
                 <div
                   key={index}
                   className="group relative bg-white rounded-3xl p-9 border-2 border-slate-200
-                           hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50
-                           transition-all duration-700 hover:-translate-y-3"
+                           hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50
+                           transition-all duration-300 hover:-translate-y-1"
                 >
                   <div
                     className="absolute inset-0 bg-gradient-to-br from-emerald-50/0 via-emerald-50/0 to-emerald-50/0
@@ -434,8 +431,8 @@ export default function Home() {
                   <div className="relative z-10">
                     <div
                       className="w-24 h-24 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mb-7
-                               group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-110
-                               transition-all duration-500 shadow-md group-hover:shadow-lg"
+                               group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-105
+                               transition-all duration-300 shadow-md group-hover:shadow-lg"
                     >
                       <img src={item.icon} alt={item.title} className="w-14 h-14" />
                     </div>
@@ -443,7 +440,7 @@ export default function Home() {
                       {item.title}
                     </h3>
                     <p className="text-slate-600 leading-relaxed mb-6 text-base font-light">{item.desc}</p>
-                    <ul className="space-y-3">
+                    <ul className="space-y-3 mb-6">
                       {item.features.map((feature, i) => (
                         <li key={i} className="flex items-center gap-3 text-sm text-slate-700 font-medium group-hover:text-slate-900 transition-colors">
                           <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
@@ -453,6 +450,24 @@ export default function Home() {
                         </li>
                       ))}
                     </ul>
+                    <Link
+                      to="/services#our-services"
+                      onClick={() => {
+                        setTimeout(() => {
+                          const element = document.getElementById('our-services');
+                          if (element) {
+                            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          } else {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        }, 100);
+                      }}
+                      className="group/btn inline-flex items-center gap-2 text-emerald-600 font-semibold 
+                               hover:text-emerald-700 transition-colors group-hover/btn:gap-3"
+                    >
+                      <span>View Details</span>
+                      <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                    </Link>
                   </div>
                 </div>
               ))}
@@ -475,7 +490,7 @@ export default function Home() {
               {processSteps.map((step, index) => (
                 <div key={index} className="relative group">
                   <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-3xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
-                  <div className="relative bg-white rounded-3xl p-9 border-2 border-slate-200 hover:border-emerald-300 hover:shadow-2xl transition-all duration-500 h-full hover:-translate-y-2">
+                  <div className="relative bg-white rounded-3xl p-9 border-2 border-slate-200 hover:border-emerald-300 hover:shadow-xl transition-all duration-300 h-full hover:-translate-y-1">
                     <div className="flex items-start justify-between mb-7">
                       <div className="text-6xl font-extrabold text-emerald-50 group-hover:text-emerald-100 transition-colors duration-300">
                         {step.number}

@@ -38,6 +38,7 @@ import {
   Heart,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
 
 /* ============================== STYLES ============================== */
 const styles = `
@@ -281,6 +282,167 @@ function ContactTile({ icon: Icon, label, children }) {
   );
 }
 
+// Animated Counter Component
+function AnimatedCounter({ end, duration = 2000, suffix = "", prefix = "" }) {
+  const [count, setCount] = useState(0);
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const counterRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !hasAnimated) {
+            setHasAnimated(true);
+            let startTime = null;
+            const animate = (currentTime) => {
+              if (!startTime) startTime = currentTime;
+              const progress = Math.min((currentTime - startTime) / duration, 1);
+
+              // Easing function for smooth animation
+              const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+              setCount(Math.floor(easeOutQuart * end));
+
+              if (progress < 1) {
+                requestAnimationFrame(animate);
+              } else {
+                setCount(end);
+              }
+            };
+            requestAnimationFrame(animate);
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+
+    if (counterRef.current) {
+      observer.observe(counterRef.current);
+    }
+
+    return () => {
+      if (counterRef.current) {
+        observer.unobserve(counterRef.current);
+      }
+    };
+  }, [end, duration, hasAnimated]);
+
+  return (
+    <span ref={counterRef} className="inline-block">
+      {prefix}{count.toLocaleString()}{suffix}
+    </span>
+  );
+}
+
+// Statistics Section Component
+function StatsSection() {
+  const stats = [
+    {
+      icon: Award,
+      value: 10,
+      suffix: "+",
+      label: "Awards Won",
+      description: "Industry recognition for excellence",
+      gradient: "from-amber-400 to-orange-500",
+      bgGradient: "from-amber-50 to-orange-50",
+    },
+    {
+      icon: Briefcase,
+      value: 860,
+      suffix: "+",
+      label: "Projects Completed",
+      description: "Successful campaigns delivered",
+      gradient: "from-emerald-400 to-teal-500",
+      bgGradient: "from-emerald-50 to-teal-50",
+    },
+    {
+      icon: Users,
+      value: 55,
+      suffix: "+",
+      label: "Happy Clients",
+      description: "Trusted by businesses worldwide",
+      gradient: "from-blue-400 to-cyan-500",
+      bgGradient: "from-blue-50 to-cyan-50",
+    },
+  ];
+
+  return (
+    <section className="py-24 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-200/20 rounded-full blur-3xl animate-pulse-glow" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1s' }} />
+      </div>
+
+      <div className="container mx-auto px-6 lg:px-24 xl:px-32 relative z-10">
+        <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
+          {stats.map((stat, index) => (
+            <div
+              key={index}
+              className="group relative bg-white rounded-3xl p-8 lg:p-10 border-2 border-slate-200
+                       hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50
+                       transition-all duration-500 hover:-translate-y-2"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              {/* Background Gradient on Hover */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${stat.bgGradient} opacity-0 
+                             group-hover:opacity-100 rounded-3xl transition-opacity duration-500`} />
+
+              {/* Content */}
+              <div className="relative z-10">
+                {/* Icon */}
+                <div className="mb-6">
+                  <div className={`relative w-16 h-16 rounded-2xl bg-gradient-to-br ${stat.gradient}
+                               flex items-center justify-center shadow-lg
+                               group-hover:scale-110 group-hover:rotate-6 transition-all duration-500
+                               animate-float`}
+                    style={{ animationDelay: `${index * 0.2}s` }}>
+                    <div className="absolute inset-0 bg-white/30 rounded-2xl blur-xl group-hover:bg-white/40 transition-colors" />
+                    <stat.icon className="text-white relative z-10" size={32} strokeWidth={2.5} />
+                  </div>
+                </div>
+
+                {/* Animated Number */}
+                <div className="mb-3">
+                  <div className="text-5xl lg:text-6xl font-extrabold bg-gradient-to-r from-slate-900 to-slate-700 
+                               bg-clip-text text-transparent group-hover:from-emerald-600 group-hover:to-emerald-800
+                               transition-all duration-500">
+                    <AnimatedCounter
+                      end={stat.value}
+                      suffix={stat.suffix}
+                      duration={2500}
+                    />
+                  </div>
+                </div>
+
+                {/* Label */}
+                <h3 className="text-xl lg:text-2xl font-bold text-slate-900 mb-2 
+                             group-hover:text-emerald-700 transition-colors">
+                  {stat.label}
+                </h3>
+
+                {/* Description */}
+                <p className="text-slate-600 text-sm font-medium">
+                  {stat.description}
+                </p>
+
+                {/* Decorative Line */}
+                <div className="mt-6 w-16 h-1 bg-gradient-to-r from-emerald-400 to-transparent 
+                             rounded-full group-hover:w-24 transition-all duration-500" />
+              </div>
+
+              {/* Hover Glow Effect */}
+              <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${stat.gradient} 
+                             opacity-0 group-hover:opacity-5 blur-2xl transition-opacity duration-500 
+                             -z-10`} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ============================== PAGE ============================== */
 
 export default function Home() {
@@ -348,22 +510,6 @@ export default function Home() {
                     <span className="leading-none">View Our Work</span>
                     <ArrowRight size={20} className="shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
                   </Link>
-                </div>
-
-                {/* Trust */}
-                <div className="flex items-center gap-10 pt-10 border-t border-white/30">
-                  <div className="group">
-                    <div className="text-3xl lg:text-4xl font-extrabold text-white mb-1 group-hover:scale-110 transition-transform duration-300">860+</div>
-                    <div className="text-sm text-emerald-50/90 font-medium">Projects</div>
-                  </div>
-                  <div className="group">
-                    <div className="text-3xl lg:text-4xl font-extrabold text-white mb-1 group-hover:scale-110 transition-transform duration-300">55+</div>
-                    <div className="text-sm text-emerald-50/90 font-medium">Clients</div>
-                  </div>
-                  <div className="group">
-                    <div className="text-3xl lg:text-4xl font-extrabold text-white mb-1 group-hover:scale-110 transition-transform duration-300">10+</div>
-                    <div className="text-sm text-emerald-50/90 font-medium">Awards</div>
-                  </div>
                 </div>
               </div>
 
@@ -565,10 +711,12 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ================= STATISTICS ================= */}
+        <StatsSection />
 
         {/* ================= PROCESS ================= */}
-        <section className="py-24 bg-slate-50">
-          <div className="container mx-auto px-6 lg:px-24 xl:px-32">
+        <section className="py-24 bg-gradient-to-b from-white via-slate-50 to-white relative overflow-hidden">
+          <div className="container mx-auto px-6 lg:px-24 xl:px-32 relative z-10">
             <SectionHeader
               badgeIcon={Rocket}
               badgeText="Our Process"
@@ -576,28 +724,117 @@ export default function Home() {
               desc="A proven methodology that ensures exceptional results at every stage"
             />
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {processSteps.map((step, index) => (
-                <div key={index} className="relative group">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-3xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
-                  <div className="relative bg-white rounded-3xl p-9 border-2 border-slate-200 hover:border-emerald-300 hover:shadow-xl transition-all duration-300 h-full hover:-translate-y-1">
-                    <div className="flex items-start justify-between mb-7">
-                      <div className="text-6xl font-extrabold text-emerald-50 group-hover:text-emerald-100 transition-colors duration-300">
-                        {step.number}
-                      </div>
-                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center 
-                                   group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-110
-                                   transition-all duration-500 shadow-md group-hover:shadow-lg">
-                        <step.icon className="text-emerald-700" size={26} />
+            {/* Process Steps with Connecting Lines */}
+            <div className="relative">
+              {/* Connecting Line (Desktop Only) */}
+              <div className="hidden lg:block absolute top-32 left-0 right-0 h-1">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-200 via-emerald-300 to-emerald-200 rounded-full opacity-30" />
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </div>
+
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6">
+                {processSteps.map((step, index) => {
+                  const gradients = [
+                    "from-amber-400 via-orange-400 to-amber-500",
+                    "from-emerald-400 via-teal-400 to-emerald-500",
+                    "from-blue-400 via-cyan-400 to-blue-500",
+                    "from-purple-400 via-pink-400 to-purple-500",
+                  ];
+                  const bgGradients = [
+                    "from-amber-50 to-orange-50",
+                    "from-emerald-50 to-teal-50",
+                    "from-blue-50 to-cyan-50",
+                    "from-purple-50 to-pink-50",
+                  ];
+                  const iconColors = [
+                    "text-amber-600",
+                    "text-emerald-600",
+                    "text-blue-600",
+                    "text-purple-600",
+                  ];
+
+                  return (
+                    <div
+                      key={index}
+                      className="relative group"
+                      style={{ animationDelay: `${index * 0.15}s` }}
+                    >
+                      {/* Connecting Arrow (Desktop Only) */}
+                      {index < processSteps.length - 1 && (
+                        <div className="hidden lg:block absolute top-32 -right-3 z-0">
+                          <div className="w-6 h-6 flex items-center justify-center">
+                            <ArrowRight className="text-emerald-400 opacity-50 group-hover:opacity-100 group-hover:text-emerald-500 transition-all duration-300" size={24} />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Card */}
+                      <div className="relative h-full">
+                        {/* Glow Effect */}
+                        <div className={`absolute -inset-1 bg-gradient-to-r ${gradients[index]} rounded-3xl blur-xl 
+                                     opacity-0 group-hover:opacity-40 transition-opacity duration-500`} />
+
+                        {/* Main Card */}
+                        <div className={`relative bg-white rounded-3xl p-8 lg:p-10 
+                                     border-2 border-slate-200 hover:border-emerald-300 
+                                     hover:shadow-2xl hover:shadow-emerald-100/50
+                                     transition-all duration-500 h-full hover:-translate-y-2
+                                     group-hover:scale-[1.02]`}>
+                          {/* Content */}
+                          <div className="relative z-10">
+                            {/* Icon */}
+                            <div className="mb-6">
+                              <div className={`relative w-20 h-20 rounded-2xl bg-white/80 backdrop-blur-sm
+                                           flex items-center justify-center shadow-xl
+                                           group-hover:scale-110 group-hover:rotate-12
+                                           transition-all duration-500
+                                           border-2 border-white/50 group-hover:border-white`}>
+                                <div className={`absolute inset-0 bg-gradient-to-br ${gradients[index]} 
+                                             rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity`} />
+                                <step.icon className={`${iconColors[index]} relative z-10 group-hover:scale-110 
+                                                    transition-transform duration-300`} size={36} strokeWidth={2} />
+                              </div>
+                            </div>
+
+                            {/* Title */}
+                            <h3 className={`text-2xl font-extrabold mb-4 leading-tight
+                                         ${index === 0 ? 'text-amber-900' : index === 1 ? 'text-emerald-900' : index === 2 ? 'text-blue-900' : 'text-purple-900'}
+                                         group-hover:scale-105 transition-transform duration-300`}>
+                              {step.title}
+                            </h3>
+
+                            {/* Description */}
+                            <p className="text-slate-700 leading-relaxed text-base font-light mb-6">
+                              {step.desc}
+                            </p>
+
+                            {/* Decorative Element */}
+                            <div className={`w-12 h-1 bg-gradient-to-r ${gradients[index]} 
+                                         rounded-full group-hover:w-20 transition-all duration-500`} />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <h3 className="text-xl font-extrabold text-slate-900 mb-4 group-hover:text-emerald-700 transition-colors leading-tight">
-                      {step.title}
-                    </h3>
-                    <p className="text-slate-600 leading-relaxed text-base font-light">{step.desc}</p>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bottom CTA */}
+            <div className="mt-16 text-center">
+              <Link
+                to="/contact"
+                className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 
+                         text-white rounded-xl font-bold text-base
+                         hover:from-emerald-700 hover:to-emerald-800 transition-all duration-300 
+                         shadow-xl hover:shadow-2xl hover:shadow-emerald-200/50
+                         hover:scale-105 hover:-translate-y-1
+                         border-2 border-transparent hover:border-emerald-500"
+              >
+                <Calendar size={20} className="shrink-0" />
+                <span>Start Your Project</span>
+                <ArrowRight size={20} className="shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
+              </Link>
             </div>
           </div>
         </section>
@@ -742,37 +979,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ================= WHY CHOOSE US ================= */}
-        <section className="py-24 bg-gradient-to-br from-slate-50 to-white">
-          <div className="container mx-auto px-6 lg:px-24 xl:px-32">
-            <SectionHeader
-              badgeIcon={Star}
-              badgeText="Why Choose Us"
-              title="What Sets Us Apart"
-              desc="We don't just deliver projects—we build lasting partnerships that drive sustainable growth"
-            />
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {whyChooseUs.map((item, index) => (
-                <div
-                  key={index}
-                  className="group bg-white rounded-3xl p-9 border-2 border-slate-200 hover:border-emerald-300 hover:shadow-2xl 
-                           transition-all duration-500 hover:-translate-y-3 text-center"
-                >
-                  <div className="w-20 h-20 mx-auto mb-7 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 
-                               flex items-center justify-center group-hover:from-emerald-100 group-hover:to-emerald-200 
-                               group-hover:scale-110 transition-all duration-500 shadow-lg group-hover:shadow-xl">
-                    <item.icon className="text-emerald-700" size={36} />
-                  </div>
-                  <h3 className="text-xl font-extrabold text-slate-900 mb-4 group-hover:text-emerald-700 transition-colors leading-tight">
-                    {item.title}
-                  </h3>
-                  <p className="text-slate-600 leading-relaxed text-base font-light">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
       </div>
     </>
   );

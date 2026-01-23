@@ -15,7 +15,6 @@ import {
     FileText
 } from "lucide-react";
 import { tasksAPI } from "../../services/api";
-import { generateMockTasks, generateMockComments } from "../../services/mockData";
 
 const PRIORITY_COLORS = {
     Low: "bg-slate-600/30 text-slate-300 border border-slate-600",
@@ -52,20 +51,15 @@ export default function MyTasks() {
     const fetchTasks = async () => {
         try {
             setLoading(true);
-            // TODO: Replace with real API call when backend is ready
-            // const response = await tasksAPI.getMyTasks();
-            // const userTasks = response.items || [];
-            
-            // Use mock data for now
-            const userTasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
+            const response = await tasksAPI.getMyTasks({ pageSize: 1000 });
+            const userTasks = response.items || [];
             setTasks(userTasks);
             setFilteredTasks(userTasks);
         } catch (error) {
             console.error("Error fetching tasks:", error);
-            // Fallback to mock data on error
-            const userTasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
-            setTasks(userTasks);
-            setFilteredTasks(userTasks);
+            alert('Failed to fetch tasks. Please try again.');
+            setTasks([]);
+            setFilteredTasks([]);
         } finally {
             setLoading(false);
         }
@@ -97,70 +91,66 @@ export default function MyTasks() {
 
     const handleViewTask = async (taskId) => {
         try {
-            // TODO: Replace with real API call when backend is ready
-            // const task = await tasksAPI.getById(taskId);
-            
-            // Use mock data for now
-            const task = tasks.find(t => t.id === taskId) || tasks[0];
+            const task = await tasksAPI.getById(taskId);
             if (task) {
-                // Enhance task with additional details
+                // Enhance task with additional details if needed
                 const enhancedTask = {
                     ...task,
-                    requirements: [
+                    requirements: task.requirements || [
                         "Review brand guidelines",
                         "Ensure responsive design",
                         "Get stakeholder approval",
                         "Final quality check"
                     ],
-                    attachments: Array.from({ length: task.fileCount || 0 }, (_, i) => ({
-                        id: `${task.id}-file-${i}`,
-                        name: `attachment_${i + 1}.pdf`,
-                        size: Math.floor(Math.random() * 2000) + 100,
-                        uploadedAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString()
-                    })),
-                    comments: generateMockComments([task]),
-                    statusHistory: [
-                        { status: 'Pending', changedAt: task.createdAt, changedBy: 'System' },
-                        ...(task.updatedAt ? [{ status: task.status, changedAt: task.updatedAt, changedBy: 'You' }] : []),
-                        ...(task.completedAt ? [{ status: 'Completed', changedAt: task.completedAt, changedBy: 'You' }] : [])
+                    attachments: task.attachments || [],
+                    comments: task.comments || [],
+                    statusHistory: task.statusHistory || [
+                        { status: task.status || 'Pending', changedAt: task.createdAt || new Date().toISOString(), changedBy: 'System' }
                     ],
-                    timeSpent: task.completedAt && task.createdAt 
-                        ? Math.round((new Date(task.completedAt) - new Date(task.createdAt)) / (1000 * 60 * 60)) 
-                        : null
+                    timeSpent: task.timeSpent || null
                 };
                 setSelectedTask(enhancedTask);
                 setShowTaskDetail(true);
             }
         } catch (error) {
             console.error("Error fetching task details:", error);
+            alert('Failed to fetch task details. Please try again.');
         }
     };
 
     const handleUpdateStatus = async (taskId, newStatus) => {
         try {
-            // TODO: Replace with real API call when backend is ready
-            // await tasksAPI.update(taskId, { status: newStatus });
+            // Get the current task to preserve all fields
+            const currentTask = tasks.find(t => t.id === taskId);
+            if (!currentTask) {
+                console.error('Task not found:', taskId);
+                return;
+            }
+
+            // Update task status in database with all required fields
+            await tasksAPI.update(taskId, {
+                title: currentTask.title,
+                description: currentTask.description || null,
+                priority: currentTask.priority,
+                status: newStatus,
+                dueDate: currentTask.dueDate || null,
+                assignedToTeamMemberId: currentTask.assignedToTeamMemberId || null,
+                notes: currentTask.notes || null
+            });
             
-            // Update local state for now
-            setTasks(prevTasks => 
-                prevTasks.map(task => 
-                    task.id === taskId ? { ...task, status: newStatus } : task
-                )
-            );
-            
-            // Update filtered tasks
-            setFilteredTasks(prevTasks => 
-                prevTasks.map(task => 
-                    task.id === taskId ? { ...task, status: newStatus } : task
-                )
-            );
+            // Refresh tasks from database to ensure sync
+            await fetchTasks();
             
             // Update selected task if it's the one being updated
             if (selectedTask?.id === taskId) {
-                setSelectedTask(prev => prev ? { ...prev, status: newStatus } : null);
+                const updated = await tasksAPI.getById(taskId);
+                setSelectedTask(prev => prev ? { ...prev, ...updated } : null);
             }
         } catch (error) {
             console.error("Error updating task status:", error);
+            alert(error.message || 'Failed to update task status. Please try again.');
+            // Refresh to get latest state
+            await fetchTasks();
         }
     };
 
@@ -230,9 +220,9 @@ export default function MyTasks() {
                             <option value="All" style={{ backgroundColor: '#1e293b', color: '#fff' }}>All Statuses</option>
                             <option value="Pending" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Pending</option>
                             <option value="InProgress" style={{ backgroundColor: '#1e293b', color: '#fff' }}>In Progress</option>
-                            <option value="Review" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Review</option>
                             <option value="OnHold" style={{ backgroundColor: '#1e293b', color: '#fff' }}>On Hold</option>
                             <option value="Completed" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Completed</option>
+                            <option value="Cancelled" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Cancelled</option>
                         </select>
                     </div>
 
@@ -335,21 +325,21 @@ export default function MyTasks() {
                                                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${
                                                     task.status === 'Completed' ? 'bg-emerald-600/30 text-emerald-300 border-emerald-600' :
                                                     task.status === 'InProgress' ? 'bg-blue-600/30 text-blue-300 border-blue-600' :
-                                                    task.status === 'Review' ? 'bg-purple-600/30 text-purple-300 border-purple-600' :
                                                     task.status === 'OnHold' ? 'bg-amber-600/30 text-amber-300 border-amber-600' :
+                                                    task.status === 'Cancelled' ? 'bg-red-600/30 text-red-300 border-red-600' :
                                                     'bg-slate-600/30 text-slate-300 border-slate-600'
                                                 }`}
                                                 style={{ backgroundColor: task.status === 'Completed' ? 'rgba(5, 150, 105, 0.2)' :
                                                                     task.status === 'InProgress' ? 'rgba(59, 130, 246, 0.2)' :
-                                                                    task.status === 'Review' ? 'rgba(147, 51, 234, 0.2)' :
                                                                     task.status === 'OnHold' ? 'rgba(245, 158, 11, 0.2)' :
+                                                                    task.status === 'Cancelled' ? 'rgba(239, 68, 68, 0.2)' :
                                                                     'rgba(71, 85, 105, 0.3)' }}
                                             >
                                                 <option value="Pending" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Pending</option>
                                                 <option value="InProgress" style={{ backgroundColor: '#1e293b', color: '#fff' }}>In Progress</option>
-                                                <option value="Review" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Review</option>
                                                 <option value="OnHold" style={{ backgroundColor: '#1e293b', color: '#fff' }}>On Hold</option>
                                                 <option value="Completed" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Completed</option>
+                                                <option value="Cancelled" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Cancelled</option>
                                             </select>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -482,9 +472,9 @@ function TaskDetailModal({ task, onClose, onUpdateStatus, onAddComment }) {
                             >
                                 <option value="Pending" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Pending</option>
                                 <option value="InProgress" style={{ backgroundColor: '#1e293b', color: '#fff' }}>In Progress</option>
-                                <option value="Review" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Review</option>
                                 <option value="OnHold" style={{ backgroundColor: '#1e293b', color: '#fff' }}>On Hold</option>
                                 <option value="Completed" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Completed</option>
+                                <option value="Cancelled" style={{ backgroundColor: '#1e293b', color: '#fff' }}>Cancelled</option>
                             </select>
                         </div>
                     </div>

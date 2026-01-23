@@ -50,8 +50,24 @@ namespace WP25G20.Services
             // Note: For team members, they will access via their own dashboard later
             if (!string.IsNullOrEmpty(userId) && (isAdmin == null || !isAdmin.Value))
             {
+                // Get the user to find their email and corresponding TeamMember
+                var user = await _userManager.FindByIdAsync(userId);
+                var teamMemberId = (int?)null;
+                if (user != null)
+                {
+                    var teamMember = await _context.TeamMembers
+                        .FirstOrDefaultAsync(tm => tm.Email.ToLower() == user.Email.ToLower());
+                    if (teamMember != null)
+                    {
+                        teamMemberId = teamMember.Id;
+                    }
+                }
+
+                // Use captured variable in query
+                var capturedTeamMemberId = teamMemberId;
                 query = query.Where(t => t.CreatedById == userId || 
                                          t.AssignedToId == userId ||
+                                         (capturedTeamMemberId.HasValue && t.AssignedToTeamMemberId == capturedTeamMemberId.Value) ||
                                          t.Campaign.CreatedById == userId ||
                                          t.Campaign.CampaignUsers.Any(cu => cu.UserId == userId));
             }
@@ -155,21 +171,152 @@ namespace WP25G20.Services
 
         public async Task<PagedResultDTO<TaskDTO>> GetMyTasksAsync(string userId, FilterDTO filter)
         {
-            // Create a filter that includes the AssignedToId
-            var myFilter = new FilterDTO
+            // Get the user to find their email
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
             {
-                PageNumber = filter.PageNumber,
-                PageSize = filter.PageSize,
-                SearchTerm = filter.SearchTerm,
-                SortBy = filter.SortBy,
-                SortDescending = filter.SortDescending,
-                Filters = filter.Filters ?? new Dictionary<string, string>()
-            };
-            
-            // Add AssignedToId filter
-            myFilter.Filters["AssignedToId"] = userId;
+                return new PagedResultDTO<TaskDTO>
+                {
+                    Items = new List<TaskDTO>(),
+                    TotalCount = 0,
+                    PageNumber = filter.PageNumber > 0 ? filter.PageNumber : 1,
+                    PageSize = filter.PageSize > 0 ? filter.PageSize : 10
+                };
+            }
 
-            return await GetAllAsync(myFilter);
+            // Find the TeamMember by email (case-insensitive)
+            var teamMember = await _context.TeamMembers
+                .FirstOrDefaultAsync(tm => tm.Email.ToLower() == user.Email.ToLower());
+
+            // Build query directly to ensure proper filtering
+            var query = _context.Tasks
+                .Include(t => t.Campaign)
+                    .ThenInclude(c => c.Client)
+                .Include(t => t.Campaign)
+                    .ThenInclude(c => c.CampaignUsers)
+                .Include(t => t.AssignedToTeamMember)
+                .Include(t => t.AssignedTo)
+                .Include(t => t.CreatedBy)
+                .AsQueryable();
+
+            // Filter by AssignedToTeamMemberId if team member exists
+            if (teamMember != null)
+            {
+                query = query.Where(t => t.AssignedToTeamMemberId == teamMember.Id);
+            }
+            else
+            {
+                // Fallback: check AssignedToId for backward compatibility
+                query = query.Where(t => t.AssignedToId == userId);
+            }
+
+            // Apply search
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            {
+                query = query.Where(t => t.Title.Contains(filter.SearchTerm) ||
+                                        (t.Description != null && t.Description.Contains(filter.SearchTerm)) ||
+                                        t.Campaign.Name.Contains(filter.SearchTerm));
+            }
+
+            // Apply status filter if provided
+            if (filter.Filters != null && filter.Filters.ContainsKey("Status"))
+            {
+                if (Enum.TryParse<TaskStatus>(filter.Filters["Status"], out var status))
+                {
+                    query = query.Where(t => t.Status == status);
+                }
+            }
+
+            // Apply priority filter if provided
+            if (filter.Filters != null && filter.Filters.ContainsKey("Priority"))
+            {
+                if (Enum.TryParse<TaskPriority>(filter.Filters["Priority"], out var priority))
+                {
+                    query = query.Where(t => t.Priority == priority);
+                }
+            }
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply sorting
+            if (!string.IsNullOrWhiteSpace(filter.SortBy))
+            {
+                switch (filter.SortBy.ToLower())
+                {
+                    case "title":
+                        query = filter.SortDescending == true 
+                            ? query.OrderByDescending(t => t.Title)
+                            : query.OrderBy(t => t.Title);
+                        break;
+                    case "duedate":
+                        query = filter.SortDescending == true 
+                            ? query.OrderByDescending(t => t.DueDate ?? DateTime.MaxValue)
+                            : query.OrderBy(t => t.DueDate ?? DateTime.MaxValue);
+                        break;
+                    case "status":
+                        query = filter.SortDescending == true 
+                            ? query.OrderByDescending(t => t.Status)
+                            : query.OrderBy(t => t.Status);
+                        break;
+                    case "priority":
+                        query = filter.SortDescending == true 
+                            ? query.OrderByDescending(t => t.Priority)
+                            : query.OrderBy(t => t.Priority);
+                        break;
+                    default:
+                        query = query.OrderByDescending(t => t.CreatedAt);
+                        break;
+                }
+            }
+            else
+            {
+                query = query.OrderByDescending(t => t.CreatedAt);
+            }
+
+            // Apply pagination
+            var pageNumber = filter.PageNumber > 0 ? filter.PageNumber : 1;
+            var pageSize = filter.PageSize > 0 ? filter.PageSize : 10;
+            var skip = (pageNumber - 1) * pageSize;
+            query = query.Skip(skip).Take(pageSize);
+
+            // Map to DTOs
+            var items = await query.Select(t => new TaskDTO
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                CampaignId = t.CampaignId,
+                CampaignName = t.Campaign.Name,
+                AssignedToTeamMemberId = t.AssignedToTeamMemberId,
+                AssignedToTeamMemberName = t.AssignedToTeamMember != null 
+                    ? $"{t.AssignedToTeamMember.FirstName} {t.AssignedToTeamMember.LastName}" 
+                    : null,
+                AssignedToTeamMemberRole = t.AssignedToTeamMember != null 
+                    ? t.AssignedToTeamMember.Role 
+                    : null,
+                AssignedToId = t.AssignedToId,
+                AssignedToName = t.AssignedTo != null 
+                    ? $"{t.AssignedTo.FirstName} {t.AssignedTo.LastName}" 
+                    : null,
+                DueDate = t.DueDate,
+                Priority = t.Priority.ToString(),
+                Status = t.Status.ToString(),
+                Notes = t.Notes,
+                CreatedAt = t.CreatedAt,
+                CompletedAt = t.CompletedAt,
+                CommentCount = t.TaskComments.Count,
+                FileCount = t.TaskFiles.Count
+            })
+            .ToListAsync();
+
+            return new PagedResultDTO<TaskDTO>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         public async Task<TaskDTO?> GetByIdAsync(int id, string? userId = null)
@@ -272,23 +419,54 @@ namespace WP25G20.Services
 
             var oldValues = $"{{\"Title\":\"{task.Title}\",\"Status\":\"{task.Status}\",\"Priority\":\"{task.Priority}\"}}";
 
-            task.Title = dto.Title;
-            task.Description = dto.Description;
-            task.AssignedToTeamMemberId = dto.AssignedToTeamMemberId;
-            task.DueDate = dto.DueDate;
-            task.Notes = dto.Notes;
-
-            if (Enum.TryParse<TaskPriority>(dto.Priority, out var priority))
+            // Check if user is a team member (not admin) and is assigned to this task
+            var isTeamMemberAssigned = false;
+            if (!isAdmin && task.AssignedToTeamMemberId.HasValue && task.AssignedToTeamMember != null)
             {
-                task.Priority = priority;
+                var teamMember = await _context.TeamMembers
+                    .FirstOrDefaultAsync(tm => tm.Email.ToLower() == user.Email.ToLower());
+                if (teamMember != null && teamMember.Id == task.AssignedToTeamMemberId.Value)
+                {
+                    isTeamMemberAssigned = true;
+                }
             }
 
-            if (Enum.TryParse<TaskStatus>(dto.Status, out var status))
+            // Team members can only update status and notes, not other fields
+            if (isTeamMemberAssigned)
             {
-                task.Status = status;
-                if (status == TaskStatus.Completed && task.CompletedAt == null)
+                // Only allow status and notes updates for team members
+                if (Enum.TryParse<TaskStatus>(dto.Status, out var status))
                 {
-                    task.CompletedAt = DateTime.UtcNow;
+                    task.Status = status;
+                    if (status == TaskStatus.Completed && task.CompletedAt == null)
+                    {
+                        task.CompletedAt = DateTime.UtcNow;
+                    }
+                }
+                task.Notes = dto.Notes; // Allow notes update
+                // Don't update Title, Description, Priority, DueDate, or AssignedToTeamMemberId
+            }
+            else
+            {
+                // Admins and other authorized users can update all fields
+                task.Title = dto.Title;
+                task.Description = dto.Description;
+                task.AssignedToTeamMemberId = dto.AssignedToTeamMemberId;
+                task.DueDate = dto.DueDate;
+                task.Notes = dto.Notes;
+
+                if (Enum.TryParse<TaskPriority>(dto.Priority, out var priority))
+                {
+                    task.Priority = priority;
+                }
+
+                if (Enum.TryParse<TaskStatus>(dto.Status, out var status))
+                {
+                    task.Status = status;
+                    if (status == TaskStatus.Completed && task.CompletedAt == null)
+                    {
+                        task.CompletedAt = DateTime.UtcNow;
+                    }
                 }
             }
 

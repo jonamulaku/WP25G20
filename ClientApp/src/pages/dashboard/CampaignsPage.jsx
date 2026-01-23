@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Edit, Trash2, Eye, Calendar, X, Save, Megaphone } from "lucide-react";
 import { campaignsAPI, clientsAPI, servicesAPI } from "../../services/api";
+import { pricingPackages } from "../../data/pricingPackages";
 
 export default function CampaignsPage() {
     const [campaigns, setCampaigns] = useState([]);
@@ -14,7 +15,7 @@ export default function CampaignsPage() {
         name: "",
         description: "",
         clientId: "",
-        serviceId: "",
+        pricingPackageId: "",
         startDate: "",
         endDate: "",
         budget: "",
@@ -48,11 +49,30 @@ export default function CampaignsPage() {
     const handleOpenModal = (campaign = null) => {
         if (campaign) {
             setEditingCampaign(campaign);
+            // Try to get pricing package ID from serviceName
+            let pricingPackageId = "";
+            if (campaign.serviceName) {
+                // Try exact match first (case-insensitive)
+                let pkg = pricingPackages.find(p => 
+                    p.name.toLowerCase() === campaign.serviceName.toLowerCase()
+                );
+                
+                // If no exact match, try partial match
+                if (!pkg) {
+                    pkg = pricingPackages.find(p => 
+                        campaign.serviceName.toLowerCase().includes(p.name.toLowerCase()) ||
+                        p.name.toLowerCase().includes(campaign.serviceName.toLowerCase())
+                    );
+                }
+                
+                pricingPackageId = pkg?.id || "";
+            }
+            
             setFormData({
                 name: campaign.name || "",
                 description: campaign.description || "",
                 clientId: campaign.clientId?.toString() || "",
-                serviceId: campaign.serviceId?.toString() || "",
+                pricingPackageId: pricingPackageId,
                 startDate: campaign.startDate ? new Date(campaign.startDate).toISOString().split('T')[0] : "",
                 endDate: campaign.endDate ? new Date(campaign.endDate).toISOString().split('T')[0] : "",
                 budget: campaign.budget?.toString() || "",
@@ -65,7 +85,7 @@ export default function CampaignsPage() {
                 name: "",
                 description: "",
                 clientId: "",
-                serviceId: "",
+                pricingPackageId: "",
                 startDate: "",
                 endDate: "",
                 budget: "",
@@ -83,7 +103,7 @@ export default function CampaignsPage() {
             name: "",
             description: "",
             clientId: "",
-            serviceId: "",
+            pricingPackageId: "",
             startDate: "",
             endDate: "",
             budget: "",
@@ -95,14 +115,60 @@ export default function CampaignsPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            const selectedPackage = pricingPackages.find(p => p.id === formData.pricingPackageId);
+            if (!selectedPackage) {
+                alert('Please select a pricing package');
+                return;
+            }
+
+            // Find a service that matches the pricing package name
+            // Try exact match first, then case-insensitive, then partial
+            let matchingService = services.find(s => 
+                s.name.toLowerCase() === selectedPackage.name.toLowerCase()
+            );
+            
+            if (!matchingService) {
+                matchingService = services.find(s => 
+                    s.name.toLowerCase().includes(selectedPackage.name.toLowerCase()) ||
+                    selectedPackage.name.toLowerCase().includes(s.name.toLowerCase())
+                );
+            }
+
+            // For both create and update, we need a valid serviceId
+            // If service doesn't exist, create it automatically
+            if (!matchingService) {
+                try {
+                    // Auto-create the service matching the pricing package
+                    const newService = await servicesAPI.create({
+                        name: selectedPackage.name,
+                        description: `Pricing package: ${selectedPackage.name} - ${selectedPackage.price} ${selectedPackage.period}`,
+                        deliverables: `Includes all services for ${selectedPackage.name} package`,
+                        basePrice: parseFloat(selectedPackage.price.replace(/[^0-9.]/g, '')) || 0,
+                        pricingType: "Monthly",
+                        isActive: true
+                    });
+                    matchingService = newService;
+                    // Refresh services list
+                    const servicesRes = await servicesAPI.getAll({ pageSize: 1000 });
+                    setServices(servicesRes.items || []);
+                } catch (error) {
+                    console.error('Error creating service:', error);
+                    alert(`Failed to create service "${selectedPackage.name}". Please create it manually in the Services page first.`);
+                    return;
+                }
+            }
+
             const submitData = {
                 ...formData,
                 clientId: parseInt(formData.clientId),
-                serviceId: parseInt(formData.serviceId),
+                serviceId: matchingService.id,
                 budget: parseFloat(formData.budget) || 0,
                 startDate: new Date(formData.startDate).toISOString(),
                 endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null
             };
+            
+            // Remove pricingPackageId as backend doesn't need it
+            delete submitData.pricingPackageId;
 
             if (editingCampaign) {
                 await campaignsAPI.update(editingCampaign.id, submitData);
@@ -206,7 +272,9 @@ export default function CampaignsPage() {
                                 <div className="flex-1">
                                     <h3 className="text-white font-bold text-lg mb-1">{campaign.name}</h3>
                                     <p className="text-slate-400 text-sm">{campaign.clientName}</p>
-                                    <p className="text-slate-500 text-xs mt-1">{campaign.serviceName}</p>
+                                    <p className="text-slate-500 text-xs mt-1">
+                                        Package: {campaign.serviceName || "Not assigned"}
+                                    </p>
                                 </div>
                                 <select
                                     value={campaign.status}
@@ -332,18 +400,18 @@ export default function CampaignsPage() {
                                 </div>
                                 <div>
                                     <label className="block text-slate-300 text-sm font-medium mb-2">
-                                        Service *
+                                        Pricing Package *
                                     </label>
                                     <select
                                         required
-                                        value={formData.serviceId}
-                                        onChange={(e) => setFormData({ ...formData, serviceId: e.target.value })}
+                                        value={formData.pricingPackageId}
+                                        onChange={(e) => setFormData({ ...formData, pricingPackageId: e.target.value })}
                                         className="w-full px-4 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                                     >
-                                        <option value="">Select Service</option>
-                                        {services.filter(s => s.isActive).map(service => (
-                                            <option key={service.id} value={service.id}>
-                                                {service.name}
+                                        <option value="">Select Pricing Package</option>
+                                        {pricingPackages.map(pkg => (
+                                            <option key={pkg.id} value={pkg.id}>
+                                                {pkg.name} - {pkg.price} {pkg.period}
                                             </option>
                                         ))}
                                     </select>

@@ -87,6 +87,7 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITeamMemberService, TeamMemberService>();
+builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddScoped<IAuthorizationHelper, AuthorizationHelper>();
 
 // =========================================
@@ -297,9 +298,21 @@ if (app.Environment.IsDevelopment())
         {
             await SeedData.SeedRolesAndAdminAsync(scope.ServiceProvider);
             await SeedData.SeedTeamMembersAsync(scope.ServiceProvider);
+            await SeedData.SeedServicesAsync(scope.ServiceProvider);
+            
+            // Create user accounts for existing clients (one-time migration)
+            try
+            {
+                await WP25G20.Scripts.CreateUsersForExistingClients.RunAsync(scope.ServiceProvider);
+            }
+            catch (Exception migrationEx)
+            {
+                logger.LogWarning(migrationEx, "⚠️  Error creating users for existing clients, but application will continue");
+            }
+            
             // SeedSampleDataAsync removed - all business data (campaigns, services, tasks, clients)
             // now comes from the shared database, ensuring all teammates see the same real data
-            logger.LogInformation("✅ Seed data completed successfully (users and team members only)");
+            logger.LogInformation("✅ Seed data completed successfully (users, team members, and services)");
         }
         catch (Exception ex)
         {

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { messagesAPI } from "../services/api";
 import {
     Mail,
     User,
@@ -77,9 +78,13 @@ export default function Contact() {
         if (validateForm()) {
             setIsLoading(true);
             try {
-                // TODO: Implement API call to send contact form
-                // For now, simulate API call
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await messagesAPI.create({
+                    subject: formData.subject,
+                    content: formData.message,
+                    type: "ContactForm",
+                    senderName: formData.name,
+                    senderEmail: formData.email
+                });
                 
                 setSubmitSuccess(true);
                 setFormData({
@@ -95,7 +100,7 @@ export default function Contact() {
                 }, 5000);
             } catch (error) {
                 console.error('Error submitting contact form:', error);
-                setErrors({ submit: "Failed to send message. Please try again." });
+                setErrors({ submit: error.message || "Failed to send message. Please try again." });
             } finally {
                 setIsLoading(false);
             }

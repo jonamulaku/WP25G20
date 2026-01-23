@@ -430,6 +430,21 @@ export const usersAPI = {
         const response = await apiCall('/users/me');
         return normalizeDTO(response);
     },
+    
+    update: async (id, dto) => {
+        const response = await apiCall(`/users/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(dto),
+        });
+        return normalizeDTO(response);
+    },
+    
+    delete: async (id) => {
+        await apiCall(`/users/${id}`, {
+            method: 'DELETE',
+        });
+        return true;
+    },
 };
 
 // Team Members API
@@ -474,6 +489,146 @@ export const teamMembersAPI = {
         await apiCall(`/teammembers/${id}`, {
             method: 'DELETE',
         });
+    },
+};
+
+// Invoices API
+export const invoicesAPI = {
+    getAll: async (filter = {}) => {
+        const params = new URLSearchParams();
+        if (filter.searchTerm) params.append('searchTerm', filter.searchTerm);
+        if (filter.pageNumber) params.append('pageNumber', filter.pageNumber);
+        if (filter.pageSize) params.append('pageSize', filter.pageSize);
+        
+        const response = await apiCall(`/invoices?${params.toString()}`);
+        return {
+            ...response,
+            items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || []
+        };
+    },
+    
+    getById: async (id) => {
+        const response = await apiCall(`/invoices/${id}`);
+        return normalizeDTO(response);
+    },
+    
+    create: async (data) => {
+        const response = await apiCall('/invoices', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    update: async (id, data) => {
+        const response = await apiCall(`/invoices/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    delete: async (id) => {
+        await apiCall(`/invoices/${id}`, {
+            method: 'DELETE',
+        });
+    },
+};
+
+// Payments API
+export const paymentsAPI = {
+    getAll: async (filter = {}) => {
+        const params = new URLSearchParams();
+        if (filter.searchTerm) params.append('searchTerm', filter.searchTerm);
+        if (filter.pageNumber) params.append('pageNumber', filter.pageNumber);
+        if (filter.pageSize) params.append('pageSize', filter.pageSize);
+        
+        const response = await apiCall(`/payments?${params.toString()}`);
+        return {
+            ...response,
+            items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || []
+        };
+    },
+    
+    getById: async (id) => {
+        const response = await apiCall(`/payments/${id}`);
+        return normalizeDTO(response);
+    },
+    
+    create: async (data) => {
+        const response = await apiCall('/payments', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+};
+
+// Messages API
+export const messagesAPI = {
+    getAll: async (filter = {}) => {
+        const params = new URLSearchParams();
+        if (filter.type) params.append('type', filter.type);
+        if (filter.status) params.append('status', filter.status);
+        if (filter.searchTerm) params.append('searchTerm', filter.searchTerm);
+        if (filter.pageNumber) params.append('pageNumber', filter.pageNumber);
+        if (filter.pageSize) params.append('pageSize', filter.pageSize);
+        
+        const response = await apiCall(`/messages?${params.toString()}`);
+        return {
+            ...response,
+            items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || []
+        };
+    },
+    
+    getById: async (id) => {
+        const response = await apiCall(`/messages/${id}`);
+        return normalizeDTO(response);
+    },
+    
+    create: async (data) => {
+        // Contact form doesn't require auth
+        const response = await apiCall('/messages', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    update: async (id, data) => {
+        const response = await apiCall(`/messages/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    delete: async (id) => {
+        await apiCall(`/messages/${id}`, {
+            method: 'DELETE',
+        });
+    },
+    
+    getUnreadCount: async () => {
+        const response = await apiCall('/messages/unread-count');
+        return response;
+    },
+};
+
+// Activity Logs API (using direct endpoint since there's no dedicated controller yet)
+export const activityLogsAPI = {
+    getRecent: async (count = 50) => {
+        // We'll need to add this endpoint, but for now we'll use a workaround
+        // or fetch from a general endpoint if available
+        try {
+            const response = await apiCall(`/activitylogs/recent?count=${count}`);
+            return {
+                items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || response || []
+            };
+        } catch (error) {
+            console.warn('Activity logs endpoint not available:', error);
+            return { items: [] };
+        }
     },
 };
 

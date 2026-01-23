@@ -36,9 +36,11 @@ import {
   Leaf,
   DollarSign,
   Heart,
+  LayoutDashboard,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { authAPI } from "../services/api";
 
 /* ============================== STYLES ============================== */
 const styles = `
@@ -446,6 +448,31 @@ function StatsSection() {
 /* ============================== PAGE ============================== */
 
 export default function Home() {
+  const [isTeamMember, setIsTeamMember] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const user = authAPI.getCurrentUser();
+      console.log('Home page - Current user:', user);
+      console.log('Home page - User roles:', user?.roles);
+      setIsAdmin(user?.roles?.includes('Admin') || false);
+      setIsClient(user?.roles?.includes('Client') || false);
+      // Team members have 'Team' role
+      const isTeam = user?.roles?.includes('Team') || false;
+      setIsTeamMember(isTeam);
+      console.log('Home page - Is team member:', isTeam);
+    };
+
+    checkAuth();
+    window.addEventListener('authChange', checkAuth);
+
+    return () => {
+      window.removeEventListener('authChange', checkAuth);
+    };
+  }, []);
+
   return (
     <>
       <style>{styles}</style>
@@ -477,20 +504,58 @@ export default function Home() {
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                  <Link
-                    to="/contact"
-                    data-cta-id="hero-primary"
-                    data-cta-variant="strategy-call"
-                    data-cta-location="hero-section"
-                    onClick={() => trackCta({ cta_id: "hero-primary", cta_variant: "strategy-call", location: "hero-section" })}
-                    className="group inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-emerald-700 rounded-2xl font-bold text-base
-                             shadow-2xl hover:shadow-emerald-200/50 transition-all duration-300 hover:scale-[1.03] hover:-translate-y-0.5
-                             border-2 border-transparent hover:border-emerald-100"
-                  >
-                    <Calendar size={20} className="shrink-0" />
-                    <span className="leading-none">Book a Strategy Call</span>
-                    <ArrowRight size={20} className="shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
-                  </Link>
+                  {isTeamMember && !isAdmin && !isClient && (
+                    <Link
+                      to="/team-dashboard"
+                      className="group inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-emerald-700 rounded-2xl font-bold text-base
+                               shadow-2xl hover:shadow-emerald-200/50 transition-all duration-300 hover:scale-[1.03] hover:-translate-y-0.5
+                               border-2 border-transparent hover:border-emerald-100"
+                    >
+                      <LayoutDashboard size={20} className="shrink-0" />
+                      <span className="leading-none">Go to Dashboard</span>
+                      <ArrowRight size={20} className="shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
+                    </Link>
+                  )}
+                  {isAdmin && (
+                    <Link
+                      to="/dashboard"
+                      className="group inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-emerald-700 rounded-2xl font-bold text-base
+                               shadow-2xl hover:shadow-emerald-200/50 transition-all duration-300 hover:scale-[1.03] hover:-translate-y-0.5
+                               border-2 border-transparent hover:border-emerald-100"
+                    >
+                      <LayoutDashboard size={20} className="shrink-0" />
+                      <span className="leading-none">Go to Dashboard</span>
+                      <ArrowRight size={20} className="shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
+                    </Link>
+                  )}
+                  {isClient && !isAdmin && (
+                    <Link
+                      to="/client-dashboard"
+                      className="group inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-emerald-700 rounded-2xl font-bold text-base
+                               shadow-2xl hover:shadow-emerald-200/50 transition-all duration-300 hover:scale-[1.03] hover:-translate-y-0.5
+                               border-2 border-transparent hover:border-emerald-100"
+                    >
+                      <LayoutDashboard size={20} className="shrink-0" />
+                      <span className="leading-none">Go to Dashboard</span>
+                      <ArrowRight size={20} className="shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
+                    </Link>
+                  )}
+                  {!isTeamMember && !isAdmin && !isClient && (
+                    <Link
+                      to="/contact"
+                      data-cta-id="hero-primary"
+                      data-cta-variant="strategy-call"
+                      data-cta-location="hero-section"
+                      onClick={() => trackCta({ cta_id: "hero-primary", cta_variant: "strategy-call", location: "hero-section" })}
+                      className="group inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-emerald-700 rounded-2xl font-bold text-base
+                               shadow-2xl hover:shadow-emerald-200/50 transition-all duration-300 hover:scale-[1.03] hover:-translate-y-0.5
+                               border-2 border-transparent hover:border-emerald-100"
+                    >
+                      <Calendar size={20} className="shrink-0" />
+                      <span className="leading-none">Book a Strategy Call</span>
+                      <ArrowRight size={20} className="shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
+                    </Link>
+                  )}
 
                   <Link
                     to="/projects"

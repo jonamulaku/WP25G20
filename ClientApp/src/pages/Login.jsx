@@ -84,8 +84,8 @@ export default function Login() {
                             navigate("/dashboard");
                         } else if (user.roles.includes('Client')) {
                             navigate("/client-dashboard");
-                        } else if (user.roles.includes('User')) {
-                            // Team members have 'User' role - redirect to team dashboard
+                        } else if (user.roles.includes('Team')) {
+                            // Team members have 'Team' role - redirect to team dashboard
                             navigate("/team-dashboard");
                         } else {
                             navigate("/");

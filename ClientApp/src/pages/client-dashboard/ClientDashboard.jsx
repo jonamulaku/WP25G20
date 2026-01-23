@@ -9,8 +9,11 @@ import {
     ArrowUpRight
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { campaignsAPI } from "../../services/api";
+import { useOutletContext } from "react-router-dom";
 
 export default function ClientDashboard() {
+    const { userInfo } = useOutletContext();
     const [stats, setStats] = useState({
         activeCampaigns: 0,
         totalBudget: 0,
@@ -23,19 +26,35 @@ export default function ClientDashboard() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // TODO: Fetch real data from API
-        setTimeout(() => {
+        fetchDashboardData();
+    }, [userInfo]);
+
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true);
+            const response = await campaignsAPI.getAll({ pageSize: 1000 });
+            const campaigns = response.items || [];
+            
+            // Calculate stats from real data
+            const activeCampaigns = campaigns.filter(c => c.status === 'Active').length;
+            const totalBudget = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
+            const spent = campaigns.reduce((sum, c) => sum + (c.spent || 0), 0);
+            
             setStats({
-                activeCampaigns: 5,
-                totalBudget: 125000,
-                spent: 78500,
-                pendingApprovals: 8,
-                approvedItems: 24,
-                pendingInvoices: 2
+                activeCampaigns,
+                totalBudget,
+                spent,
+                pendingApprovals: 0, // TODO: Implement when approvals API is ready
+                approvedItems: 0, // TODO: Implement when approvals API is ready
+                pendingInvoices: 0 // TODO: Implement when invoices API is ready
             });
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            alert('Failed to fetch dashboard data. Please try again.');
+        } finally {
             setLoading(false);
-        }, 500);
-    }, []);
+        }
+    };
 
     const kpiCards = [
         {
@@ -68,11 +87,17 @@ export default function ClientDashboard() {
     ];
 
     const recentActivities = [
-        { id: 1, type: "approval", message: "Campaign 'Q1 Social Media' requires your approval", time: "2 hours ago", link: "/client-dashboard/approvals" },
-        { id: 2, type: "campaign", message: "New campaign assets uploaded", time: "4 hours ago", link: "/client-dashboard/campaigns" },
-        { id: 3, type: "invoice", message: "Invoice #1234 ready for payment", time: "1 day ago", link: "/client-dashboard/billing" },
-        { id: 4, type: "message", message: "New message from agency team", time: "2 days ago", link: "/client-dashboard/messages" },
+        // TODO: Replace with real activity feed from API
+        { id: 1, type: "campaign", message: "View your campaigns", time: "Recently", link: "/client-dashboard/campaigns" },
     ];
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-slate-400">Loading dashboard...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

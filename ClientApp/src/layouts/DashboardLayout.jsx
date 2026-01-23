@@ -16,7 +16,8 @@ import {
     Search,
     LogOut,
     User,
-    Home
+    Home,
+    MessageSquare
 } from "lucide-react";
 import { authAPI } from "../services/api";
 import Logo from "../assets/logos/Group.svg";
@@ -50,13 +51,15 @@ export default function DashboardLayout() {
 
     const menuItems = [
         { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { path: "/dashboard/users", label: "Users", icon: User },
         { path: "/dashboard/clients", label: "Clients", icon: Users },
         { path: "/dashboard/campaigns", label: "Campaigns", icon: Megaphone },
-        { path: "/dashboard/services", label: "Services", icon: Briefcase },
+        { path: "/dashboard/pricing", label: "Pricing", icon: Briefcase },
         { path: "/dashboard/tasks", label: "Tasks", icon: CheckSquare },
         { path: "/dashboard/reports", label: "Reports & Analytics", icon: BarChart3 },
         { path: "/dashboard/team", label: "Team Management", icon: UserCog },
         { path: "/dashboard/invoices", label: "Billing & Invoices", icon: Receipt },
+        { path: "/dashboard/messages", label: "Messages", icon: MessageSquare },
         { path: "/dashboard/settings", label: "Settings", icon: Settings },
     ];
 

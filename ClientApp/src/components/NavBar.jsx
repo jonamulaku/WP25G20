@@ -8,6 +8,8 @@ export default function Navbar() {
     const [open, setOpen] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [isClient, setIsClient] = useState(false);
+    const [isTeamMember, setIsTeamMember] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -23,12 +25,15 @@ export default function Navbar() {
 
     const isActive = (path) => location.pathname === path;
 
-    // Check authentication status and admin role
+    // Check authentication status and roles
     useEffect(() => {
         const checkAuth = () => {
             const user = authAPI.getCurrentUser();
             setIsLoggedIn(!!user);
             setIsAdmin(user?.roles?.includes('Admin') || false);
+            setIsClient(user?.roles?.includes('Client') || false);
+            // Team members have 'Team' role
+            setIsTeamMember(user?.roles?.includes('Team') || false);
         };
 
         // Check on mount
@@ -109,6 +114,30 @@ export default function Navbar() {
                                 Dashboard
                             </Link>
                         )}
+                        {isClient && !isAdmin && (
+                            <Link
+                                to="/client-dashboard"
+                                onClick={handleNavClick}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold
+                                         hover:bg-emerald-700 transition-all duration-300 shadow-lg shadow-emerald-600/20
+                                         hover:shadow-xl hover:shadow-emerald-600/30 hover:scale-105"
+                            >
+                                <LayoutDashboard size={18} />
+                                Dashboard
+                            </Link>
+                        )}
+                        {isTeamMember && !isAdmin && !isClient && (
+                            <Link
+                                to="/team-dashboard"
+                                onClick={handleNavClick}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold
+                                         hover:bg-emerald-700 transition-all duration-300 shadow-lg shadow-emerald-600/20
+                                         hover:shadow-xl hover:shadow-emerald-600/30 hover:scale-105"
+                            >
+                                <LayoutDashboard size={18} />
+                                Dashboard
+                            </Link>
+                        )}
                         {isLoggedIn ? (
                             <button
                                 onClick={handleLogout}
@@ -172,6 +201,28 @@ export default function Navbar() {
                         {isAdmin && (
                             <Link
                                 to="/dashboard"
+                                onClick={handleNavClick}
+                                className="flex items-center gap-2 block w-full mt-4 px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold
+                                         text-center hover:bg-emerald-700 transition-all duration-300"
+                            >
+                                <LayoutDashboard size={18} />
+                                Dashboard
+                            </Link>
+                        )}
+                        {isClient && !isAdmin && (
+                            <Link
+                                to="/client-dashboard"
+                                onClick={handleNavClick}
+                                className="flex items-center gap-2 block w-full mt-4 px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold
+                                         text-center hover:bg-emerald-700 transition-all duration-300"
+                            >
+                                <LayoutDashboard size={18} />
+                                Dashboard
+                            </Link>
+                        )}
+                        {isTeamMember && !isAdmin && !isClient && (
+                            <Link
+                                to="/team-dashboard"
                                 onClick={handleNavClick}
                                 className="flex items-center gap-2 block w-full mt-4 px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold
                                          text-center hover:bg-emerald-700 transition-all duration-300"

@@ -10,7 +10,6 @@ import {
     Filter
 } from "lucide-react";
 import { tasksAPI } from "../../services/api";
-import { generateMockTasks, generateMockActivityLog } from "../../services/mockData";
 
 export default function ActivityTime() {
     const { userInfo, teamMemberInfo } = useOutletContext();
@@ -33,29 +32,30 @@ export default function ActivityTime() {
                 return;
             }
             
-            // TODO: Replace with real API call when backend is ready
-            // const tasksResponse = await tasksAPI.getMyTasks();
+            const tasksResponse = await tasksAPI.getMyTasks({ pageSize: 1000 });
+            const tasks = tasksResponse.items || [];
             
-            // Use mock data for now
-            const tasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
-            
-            // Generate activity log from tasks
-            const activityLog = generateMockActivityLog(tasks);
-            
-            // Map activity types to icons and ensure createdAt is a Date object
-            const activityLogWithIcons = activityLog.map(activity => ({
-                ...activity,
-                createdAt: new Date(activity.createdAt), // Ensure it's a Date object
-                icon: activity.type === 'task_created' || activity.type === 'task_completed' 
-                    ? CheckSquare 
-                    : activity.type === 'file_uploaded'
-                    ? FileText
-                    : Activity
-            }));
+            // Generate activity log from real task data
+            const activityLog = tasks
+                .filter(t => t.createdAt || t.updatedAt)
+                .map(task => {
+                    const isCompleted = task.status === 'Completed';
+                    return {
+                        id: `activity-${task.id}`,
+                        type: isCompleted ? 'task_completed' : 'task_created',
+                        description: isCompleted 
+                            ? `Completed task: "${task.title}"`
+                            : `Created task: "${task.title}"`,
+                        createdAt: new Date(task.updatedAt || task.createdAt),
+                        icon: CheckSquare
+                    };
+                })
+                .sort((a, b) => b.createdAt - a.createdAt)
+                .slice(0, 50);
 
-            setActivities(activityLogWithIcons);
+            setActivities(activityLog);
 
-            // Calculate time tracking
+            // Calculate time tracking from real data
             const completedTasks = tasks.filter(t => t.status === 'Completed' && t.completedAt);
             const totalTime = completedTasks.reduce((sum, task) => {
                 if (task.createdAt && task.completedAt) {
@@ -113,7 +113,6 @@ export default function ActivityTime() {
             });
         } catch (error) {
             console.error("Error fetching activity data:", error);
-            // Set empty arrays on error to prevent blank page
             setActivities([]);
             setTimeTracking({});
         } finally {

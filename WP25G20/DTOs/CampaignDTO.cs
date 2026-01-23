@@ -61,6 +61,9 @@ namespace WP25G20.DTOs
         public string? Description { get; set; }
 
         [Required]
+        public int ServiceId { get; set; }
+
+        [Required]
         public DateTime StartDate { get; set; }
 
         public DateTime? EndDate { get; set; }

@@ -17,13 +17,15 @@ import SignUp from "./pages/SignUp";
 import Contact from "./pages/Contact";
 
 import DashboardOverview from "./pages/dashboard/DashboardOverview";
+import UsersPage from "./pages/dashboard/UsersPage";
 import ClientsPage from "./pages/dashboard/ClientsPage";
 import CampaignsPage from "./pages/dashboard/CampaignsPage";
-import ServicesPage from "./pages/dashboard/ServicesPage";
+import PricingPage from "./pages/dashboard/PricingPage";
 import TasksPage from "./pages/dashboard/TasksPage";
 import ReportsPage from "./pages/dashboard/ReportsPage";
 import TeamPage from "./pages/dashboard/TeamPage";
 import InvoicesPage from "./pages/dashboard/InvoicesPage";
+import MessagesPage from "./pages/dashboard/MessagesPage";
 import SettingsPage from "./pages/dashboard/SettingsPage";
 
 import ClientDashboard from "./pages/client-dashboard/ClientDashboard";
@@ -40,7 +42,6 @@ import MyTasks from "./pages/team-dashboard/MyTasks";
 import TeamCampaigns from "./pages/team-dashboard/Campaigns";
 import Performance from "./pages/team-dashboard/Performance";
 import TeamCalendar from "./pages/team-dashboard/Calendar";
-import TeamFilesAssets from "./pages/team-dashboard/FilesAssets";
 import Communication from "./pages/team-dashboard/Communication";
 import ActivityTime from "./pages/team-dashboard/ActivityTime";
 import ProfileSettings from "./pages/team-dashboard/ProfileSettings";
@@ -133,13 +134,15 @@ export default function App() {
                 element={<DashboardLayout />}
             >
                 <Route index element={<DashboardOverview />} />
+                <Route path="users" element={<UsersPage />} />
                 <Route path="clients" element={<ClientsPage />} />
                 <Route path="campaigns" element={<CampaignsPage />} />
-                <Route path="services" element={<ServicesPage />} />
+                <Route path="pricing" element={<PricingPage />} />
                 <Route path="tasks" element={<TasksPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="team" element={<TeamPage />} />
                 <Route path="invoices" element={<InvoicesPage />} />
+                <Route path="messages" element={<MessagesPage />} />
                 <Route path="settings" element={<SettingsPage />} />
             </Route>
 
@@ -168,7 +171,6 @@ export default function App() {
                 <Route path="campaigns" element={<TeamCampaigns />} />
                 <Route path="performance" element={<Performance />} />
                 <Route path="calendar" element={<TeamCalendar />} />
-                <Route path="files" element={<TeamFilesAssets />} />
                 <Route path="communication" element={<Communication />} />
                 <Route path="activity" element={<ActivityTime />} />
                 <Route path="profile" element={<ProfileSettings />} />

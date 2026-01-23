@@ -13,6 +13,7 @@ export default function ClientsPage() {
         companyName: "",
         contactPerson: "",
         email: "",
+        password: "",
         phone: "",
         address: "",
         notes: "",
@@ -43,6 +44,7 @@ export default function ClientsPage() {
                 companyName: client.companyName || "",
                 contactPerson: client.contactPerson || "",
                 email: client.email || "",
+                password: "", // Don't show password when editing
                 phone: client.phone || "",
                 address: client.address || "",
                 notes: client.notes || "",
@@ -54,6 +56,7 @@ export default function ClientsPage() {
                 companyName: "",
                 contactPerson: "",
                 email: "",
+                password: "",
                 phone: "",
                 address: "",
                 notes: "",
@@ -70,6 +73,7 @@ export default function ClientsPage() {
             companyName: "",
             contactPerson: "",
             email: "",
+            password: "",
             phone: "",
             address: "",
             notes: "",
@@ -81,8 +85,16 @@ export default function ClientsPage() {
         e.preventDefault();
         try {
             if (editingClient) {
-                await clientsAPI.update(editingClient.id, formData);
+                // Don't send password when updating
+                const updateData = { ...formData };
+                delete updateData.password;
+                await clientsAPI.update(editingClient.id, updateData);
             } else {
+                // Password is required for creating new clients
+                if (!formData.password || formData.password.length < 6) {
+                    alert('Password is required and must be at least 6 characters long.');
+                    return;
+                }
                 await clientsAPI.create(formData);
             }
             await fetchClients();
@@ -112,6 +124,12 @@ export default function ClientsPage() {
     };
 
     const handleDelete = async (id) => {
+        // Clients with id = 0 don't have a Client entity, so they can't be deleted
+        if (id === 0) {
+            alert('This client does not have a Client entity yet. Please update the client first to create the entity, then you can delete it.');
+            return;
+        }
+        
         if (!window.confirm('Are you sure you want to delete this client?')) {
             return;
         }
@@ -331,6 +349,23 @@ export default function ClientsPage() {
                                     className="w-full px-4 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                                 />
                             </div>
+                            {!editingClient && (
+                                <div>
+                                    <label className="block text-slate-300 text-sm font-medium mb-2">
+                                        Password *
+                                    </label>
+                                    <input
+                                        type="password"
+                                        required
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                        placeholder="Minimum 6 characters"
+                                        minLength={6}
+                                    />
+                                    <p className="text-slate-400 text-xs mt-1">Password must be at least 6 characters long</p>
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-slate-300 text-sm font-medium mb-2">
                                     Phone

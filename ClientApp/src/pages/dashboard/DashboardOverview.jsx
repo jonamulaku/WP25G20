@@ -10,13 +10,14 @@ import {
     ArrowUpRight,
     ArrowDownRight
 } from "lucide-react";
-import { clientsAPI, campaignsAPI, tasksAPI } from "../../services/api";
+import { clientsAPI, campaignsAPI, tasksAPI, invoicesAPI, paymentsAPI } from "../../services/api";
 
 export default function DashboardOverview() {
     const [stats, setStats] = useState({
         activeClients: 0,
         activeCampaigns: 0,
         monthlyRevenue: 0,
+        totalRevenue: 0,
         pendingTasks: 0,
         completedTasks: 0,
         overdueTasks: 0
@@ -28,73 +29,196 @@ export default function DashboardOverview() {
         pending: 0
     });
 
+    const [revenueData, setRevenueData] = useState([]);
+    const [recentActivities, setRecentActivities] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                // Fetch all data
-                const [clientsRes, campaignsRes, tasksRes] = await Promise.all([
-                    clientsAPI.getAll({ pageSize: 1000 }),
-                    campaignsAPI.getAll({ pageSize: 1000 }),
-                    tasksAPI.getAll({ pageSize: 1000 })
-                ]);
-
-                const clients = clientsRes.items || [];
-                const campaigns = campaignsRes.items || [];
-                const tasks = tasksRes.items || [];
-
-                // Calculate stats
-                const activeClients = clients.filter(c => c.isActive).length;
-                const activeCampaigns = campaigns.filter(c => c.status === 'Active').length;
-                
-                // Calculate monthly revenue (sum of active campaign budgets)
-                const currentMonth = new Date().getMonth();
-                const currentYear = new Date().getFullYear();
-                const monthlyRevenue = campaigns
-                    .filter(c => {
-                        const startDate = new Date(c.startDate);
-                        return c.status === 'Active' && 
-                               startDate.getMonth() === currentMonth && 
-                               startDate.getFullYear() === currentYear;
-                    })
-                    .reduce((sum, c) => sum + (parseFloat(c.budget) || 0), 0);
-
-                // Task stats
-                const pendingTasks = tasks.filter(t => t.status === 'Pending' || t.status === 'In Progress').length;
-                const completedTasks = tasks.filter(t => t.status === 'Completed').length;
-                const now = new Date();
-                const overdueTasks = tasks.filter(t => {
-                    if (t.status === 'Completed') return false;
-                    if (!t.dueDate) return false;
-                    return new Date(t.dueDate) < now;
-                }).length;
-
-                // Campaign status counts
-                const campaignStatuses = {
-                    active: campaigns.filter(c => c.status === 'Active').length,
-                    completed: campaigns.filter(c => c.status === 'Completed').length,
-                    pending: campaigns.filter(c => c.status === 'Pending' || c.status === 'Planning').length
-                };
-
-                setStats({
-                    activeClients,
-                    activeCampaigns,
-                    monthlyRevenue,
-                    pendingTasks,
-                    completedTasks,
-                    overdueTasks
-                });
-                setCampaignStatuses(campaignStatuses);
-            } catch (error) {
-                console.error('Error fetching dashboard stats:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchStats();
     }, []);
+
+    const formatTimeAgo = (date) => {
+        const now = new Date();
+        const diff = now - new Date(date);
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+
+        if (minutes < 1) return "Just now";
+        if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+        if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+        return new Date(date).toLocaleDateString();
+    };
+
+    const fetchStats = async () => {
+        try {
+            setLoading(true);
+            // Fetch all data
+            const [clientsRes, campaignsRes, tasksRes, invoicesRes, paymentsRes] = await Promise.all([
+                clientsAPI.getAll({ pageSize: 1000 }),
+                campaignsAPI.getAll({ pageSize: 1000 }),
+                tasksAPI.getAll({ pageSize: 1000 }),
+                invoicesAPI.getAll({ pageSize: 1000 }).catch(() => ({ items: [] })),
+                paymentsAPI.getAll({ pageSize: 1000 }).catch(() => ({ items: [] }))
+            ]);
+
+            const clients = clientsRes.items || [];
+            const campaigns = campaignsRes.items || [];
+            const tasks = tasksRes.items || [];
+            const invoices = invoicesRes.items || [];
+            const payments = paymentsRes.items || [];
+
+            // Calculate stats
+            const activeClients = clients.filter(c => c.isActive).length;
+            const activeCampaigns = campaigns.filter(c => c.status === 'Active').length;
+            
+            // Calculate revenue from paid invoices and payments
+            const paidInvoices = invoices.filter(inv => inv.status === 'Paid');
+            const totalRevenue = paidInvoices.reduce((sum, inv) => sum + (parseFloat(inv.totalAmount) || 0), 0);
+            
+            // Calculate monthly revenue (current month)
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            const monthlyRevenue = paidInvoices
+                .filter(inv => {
+                    const paidDate = inv.paidDate ? new Date(inv.paidDate) : new Date(inv.issueDate);
+                    return paidDate.getMonth() === currentMonth && paidDate.getFullYear() === currentYear;
+                })
+                .reduce((sum, inv) => sum + (parseFloat(inv.totalAmount) || 0), 0);
+
+            // Calculate revenue for last 6 months
+            const revenueByMonth = [];
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            for (let i = 5; i >= 0; i--) {
+                const date = new Date();
+                date.setMonth(date.getMonth() - i);
+                const month = date.getMonth();
+                const year = date.getFullYear();
+                
+                const monthRevenue = paidInvoices
+                    .filter(inv => {
+                        const paidDate = inv.paidDate ? new Date(inv.paidDate) : new Date(inv.issueDate);
+                        return paidDate.getMonth() === month && paidDate.getFullYear() === year;
+                    })
+                    .reduce((sum, inv) => sum + (parseFloat(inv.totalAmount) || 0), 0);
+                
+                revenueByMonth.push({
+                    month: monthNames[month],
+                    value: monthRevenue,
+                    fullMonth: `${monthNames[month]} ${year}`
+                });
+            }
+
+            // Task stats
+            const pendingTasks = tasks.filter(t => t.status === 'Pending' || t.status === 'In Progress').length;
+            const completedTasks = tasks.filter(t => t.status === 'Completed').length;
+            const now = new Date();
+            const overdueTasks = tasks.filter(t => {
+                if (t.status === 'Completed') return false;
+                if (!t.dueDate) return false;
+                return new Date(t.dueDate) < now;
+            }).length;
+
+            // Campaign status counts
+            const campaignStatuses = {
+                active: campaigns.filter(c => c.status === 'Active').length,
+                completed: campaigns.filter(c => c.status === 'Completed').length,
+                pending: campaigns.filter(c => c.status === 'Pending' || c.status === 'Planning').length
+            };
+
+            // Generate recent activities from various sources
+            const activities = [];
+            
+            // Add recent campaigns
+            campaigns
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .slice(0, 3)
+                .forEach(campaign => {
+                    activities.push({
+                        id: `campaign-${campaign.id}`,
+                        type: "campaign",
+                        message: `Campaign "${campaign.name}" ${campaign.status === 'Active' ? 'is active' : 'was created'}`,
+                        time: formatTimeAgo(campaign.createdAt),
+                        createdAt: campaign.createdAt
+                    });
+                });
+
+            // Add recent tasks
+            tasks
+                .filter(t => t.status === 'Completed')
+                .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+                .slice(0, 2)
+                .forEach(task => {
+                    activities.push({
+                        id: `task-${task.id}`,
+                        type: "task",
+                        message: `Task "${task.title}" was completed`,
+                        time: formatTimeAgo(task.updatedAt || task.createdAt),
+                        createdAt: task.updatedAt || task.createdAt
+                    });
+                });
+
+            // Add recent clients
+            clients
+                .filter(c => c.isActive)
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .slice(0, 2)
+                .forEach(client => {
+                    activities.push({
+                        id: `client-${client.id}`,
+                        type: "client",
+                        message: `New client "${client.companyName}" added`,
+                        time: formatTimeAgo(client.createdAt),
+                        createdAt: client.createdAt
+                    });
+                });
+
+            // Add recent paid invoices
+            paidInvoices
+                .sort((a, b) => new Date(b.paidDate || b.issueDate) - new Date(a.paidDate || a.issueDate))
+                .slice(0, 2)
+                .forEach(invoice => {
+                    activities.push({
+                        id: `invoice-${invoice.id}`,
+                        type: "invoice",
+                        message: `Invoice #${invoice.invoiceNumber} marked as paid ($${parseFloat(invoice.totalAmount || 0).toLocaleString()})`,
+                        time: formatTimeAgo(invoice.paidDate || invoice.issueDate),
+                        createdAt: invoice.paidDate || invoice.issueDate
+                    });
+                });
+
+            // Sort all activities by date and take most recent 6
+            activities.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            const recentActivities = activities.slice(0, 6);
+
+            // Calculate growth percentage
+            const previousMonthRevenue = revenueByMonth.length >= 2 
+                ? revenueByMonth[revenueByMonth.length - 2].value 
+                : 0;
+            const growth = previousMonthRevenue > 0 
+                ? ((monthlyRevenue - previousMonthRevenue) / previousMonthRevenue * 100).toFixed(1)
+                : 0;
+
+            setStats({
+                activeClients,
+                activeCampaigns,
+                monthlyRevenue,
+                totalRevenue,
+                pendingTasks,
+                completedTasks,
+                overdueTasks
+            });
+            setCampaignStatuses(campaignStatuses);
+            setRevenueData(revenueByMonth);
+            setRecentActivities(recentActivities);
+        } catch (error) {
+            console.error('Error fetching dashboard stats:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const kpiCards = [
         {
@@ -118,7 +242,7 @@ export default function DashboardOverview() {
             value: `$${stats.monthlyRevenue.toLocaleString()}`,
             icon: DollarSign,
             color: "green",
-            change: "+18%",
+            change: stats.monthlyRevenue > 0 ? "+" : "",
             trend: "up"
         },
         {
@@ -131,12 +255,17 @@ export default function DashboardOverview() {
         }
     ];
 
-    const recentActivities = [
-        { id: 1, type: "campaign", message: "New campaign 'Q1 Social Media' created", time: "2 hours ago" },
-        { id: 2, type: "task", message: "Task 'Design Logo' completed by John Doe", time: "4 hours ago" },
-        { id: 3, type: "client", message: "New client 'Tech Corp' added", time: "1 day ago" },
-        { id: 4, type: "invoice", message: "Invoice #1234 marked as paid", time: "2 days ago" },
-    ];
+    const maxRevenue = revenueData.length > 0 
+        ? Math.max(...revenueData.map(d => d.value), 1) 
+        : 1;
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-slate-400">Loading dashboard...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -194,27 +323,48 @@ export default function DashboardOverview() {
                         </div>
                         <TrendingUp className="text-emerald-400" size={24} />
                     </div>
-                    <div className="h-64 flex items-end justify-between gap-2">
-                        {[45000, 62000, 58000, 75000, 89000, 125000].map((value, index) => (
-                            <div key={index} className="flex-1 flex flex-col items-center">
-                                <div
-                                    className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-lg mb-2 transition-all hover:opacity-80"
-                                    style={{ height: `${(value / 125000) * 100}%` }}
-                                />
-                                <span className="text-xs text-slate-400">M{index + 1}</span>
+                    {revenueData.length > 0 ? (
+                        <>
+                            <div className="h-64 flex items-end justify-between gap-2">
+                                {revenueData.map((data, index) => (
+                                    <div key={index} className="flex-1 flex flex-col items-center group">
+                                        <div className="w-full relative">
+                                            <div
+                                                className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-lg mb-2 transition-all hover:opacity-80 cursor-pointer"
+                                                style={{ height: `${(data.value / maxRevenue) * 100}%`, minHeight: '4px' }}
+                                                title={`${data.fullMonth}: $${data.value.toLocaleString()}`}
+                                            />
+                                        </div>
+                                        <span className="text-xs text-slate-400">{data.month}</span>
+                                        <span className="text-xs text-slate-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            ${data.value.toLocaleString()}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-slate-700/50 flex items-center justify-between">
-                        <div>
-                            <p className="text-slate-400 text-sm">Total Revenue</p>
-                            <p className="text-2xl font-bold text-white">$468,000</p>
+                            <div className="mt-4 pt-4 border-t border-slate-700/50 flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-400 text-sm">Total Revenue (6 months)</p>
+                                    <p className="text-2xl font-bold text-white">
+                                        ${revenueData.reduce((sum, d) => sum + d.value, 0).toLocaleString()}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-slate-400 text-sm">This Month</p>
+                                    <p className="text-xl font-bold text-emerald-400">
+                                        ${stats.monthlyRevenue.toLocaleString()}
+                                    </p>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="h-64 flex items-center justify-center">
+                            <div className="text-center">
+                                <p className="text-slate-400 mb-2">No revenue data available</p>
+                                <p className="text-slate-500 text-sm">Revenue will appear here once invoices are paid</p>
+                            </div>
                         </div>
-                        <div className="text-right">
-                            <p className="text-slate-400 text-sm">Growth</p>
-                            <p className="text-xl font-bold text-emerald-400">+18.2%</p>
-                        </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Task Status */}
@@ -292,15 +442,21 @@ export default function DashboardOverview() {
                         </button>
                     </div>
                     <div className="space-y-4">
-                        {recentActivities.map((activity) => (
-                            <div key={activity.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 transition-all">
-                                <div className="w-2 h-2 rounded-full bg-emerald-400 mt-2"></div>
-                                <div className="flex-1">
-                                    <p className="text-slate-300 text-sm">{activity.message}</p>
-                                    <p className="text-slate-500 text-xs mt-1">{activity.time}</p>
+                        {recentActivities.length > 0 ? (
+                            recentActivities.map((activity) => (
+                                <div key={activity.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 transition-all">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-400 mt-2 flex-shrink-0"></div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-slate-300 text-sm">{activity.message}</p>
+                                        <p className="text-slate-500 text-xs mt-1">{activity.time}</p>
+                                    </div>
                                 </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-8">
+                                <p className="text-slate-400">No recent activity</p>
                             </div>
-                        ))}
+                        )}
                     </div>
                 </div>
             </div>

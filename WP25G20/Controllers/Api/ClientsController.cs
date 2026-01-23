@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using WP25G20.DTOs;
 using WP25G20.Services;
 using System.Security.Claims;
@@ -80,9 +81,35 @@ namespace WP25G20.Controllers.Api
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-            var deleted = await _clientService.DeleteAsync(id, userId);
-            if (!deleted) return NotFound();
-            return NoContent();
+            try
+            {
+                var deleted = await _clientService.DeleteAsync(id, userId);
+                if (!deleted) return NotFound();
+                return NoContent();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (DbUpdateException ex)
+            {
+                // Check if it's a foreign key constraint violation
+                var errorMessage = "Cannot delete client because it has related records. Please delete or reassign related items first.";
+                if (ex.InnerException?.Message.Contains("FOREIGN KEY") == true || 
+                    ex.InnerException?.Message.Contains("DELETE statement conflicted") == true)
+                {
+                    errorMessage = "Cannot delete client because it has related campaigns or invoices. Please delete or reassign them first.";
+                }
+                return BadRequest(new { error = errorMessage });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"An error occurred: {ex.Message}" });
+            }
         }
     }
 }

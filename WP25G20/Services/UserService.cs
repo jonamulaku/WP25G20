@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using WP25G20.Data;
 using WP25G20.DTOs;
 using WP25G20.Models;
@@ -12,20 +13,29 @@ namespace WP25G20.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ApplicationDbContext _context;
+        private readonly IClientRepository _clientRepository;
+        private readonly ILogger<UserService>? _logger;
 
         public UserService(
             UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IClientRepository clientRepository,
+            ILogger<UserService>? logger = null)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _context = context;
+            _clientRepository = clientRepository;
+            _logger = logger;
         }
 
         public async Task<PagedResultDTO<UserDTO>> GetAllAsync(FilterDTO filter)
         {
-            var query = _userManager.Users.AsQueryable();
+            var query = _userManager.Users
+                .Include(u => u.AssignedTasks)
+                .Include(u => u.CreatedCampaigns)
+                .AsQueryable();
 
             // Apply search
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
@@ -96,8 +106,8 @@ namespace WP25G20.Services
                     IsActive = user.IsActive,
                     CreatedAt = user.CreatedAt,
                     Roles = roles.ToList(),
-                    AssignedTaskCount = user.AssignedTasks.Count,
-                    CreatedCampaignCount = user.CreatedCampaigns.Count
+                    AssignedTaskCount = user.AssignedTasks.Count(t => t.Status != Models.TaskStatus.Pending && t.Status != Models.TaskStatus.Cancelled),
+                    CreatedCampaignCount = user.CreatedCampaigns.Count(c => c.Status != CampaignStatus.Cancelled && c.Status != CampaignStatus.Pending)
                 });
             }
 
@@ -112,7 +122,10 @@ namespace WP25G20.Services
 
         public async Task<UserDTO?> GetByIdAsync(string id)
         {
-            var user = await _userManager.FindByIdAsync(id);
+            var user = await _userManager.Users
+                .Include(u => u.AssignedTasks)
+                .Include(u => u.CreatedCampaigns)
+                .FirstOrDefaultAsync(u => u.Id == id);
             if (user == null) return null;
 
             var roles = await _userManager.GetRolesAsync(user);
@@ -127,8 +140,8 @@ namespace WP25G20.Services
                 IsActive = user.IsActive,
                 CreatedAt = user.CreatedAt,
                 Roles = roles.ToList(),
-                AssignedTaskCount = user.AssignedTasks.Count,
-                CreatedCampaignCount = user.CreatedCampaigns.Count
+                AssignedTaskCount = user.AssignedTasks.Count(t => t.Status != Models.TaskStatus.Pending && t.Status != Models.TaskStatus.Cancelled),
+                CreatedCampaignCount = user.CreatedCampaigns.Count(c => c.Status != CampaignStatus.Cancelled && c.Status != CampaignStatus.Pending)
             };
         }
 
@@ -163,6 +176,7 @@ namespace WP25G20.Services
             if (dto.Roles != null)
             {
                 var currentRoles = await _userManager.GetRolesAsync(user);
+                var hadClientRole = currentRoles.Contains("Client");
                 await _userManager.RemoveFromRolesAsync(user, currentRoles);
                 
                 foreach (var roleName in dto.Roles)
@@ -170,6 +184,42 @@ namespace WP25G20.Services
                     if (await _roleManager.RoleExistsAsync(roleName))
                     {
                         await _userManager.AddToRoleAsync(user, roleName);
+                    }
+                }
+
+                // If user just got the Client role, automatically create a Client record
+                var hasClientRole = dto.Roles.Contains("Client");
+                if (hasClientRole && !hadClientRole && !string.IsNullOrEmpty(user.Email))
+                {
+                    // Check if client already exists for this email
+                    var existingClient = await _context.Clients
+                        .FirstOrDefaultAsync(c => c.Email.ToLower() == user.Email.ToLower());
+                    
+                    if (existingClient == null)
+                    {
+                        // Create a new Client record for this user
+                        var client = new Client
+                        {
+                            CompanyName = !string.IsNullOrEmpty(user.FirstName) || !string.IsNullOrEmpty(user.LastName)
+                                ? $"{user.FirstName} {user.LastName}".Trim()
+                                : user.Email,
+                            ContactPerson = !string.IsNullOrEmpty(user.FirstName) || !string.IsNullOrEmpty(user.LastName)
+                                ? $"{user.FirstName} {user.LastName}".Trim()
+                                : null,
+                            Email = user.Email,
+                            Phone = null,
+                            Address = null,
+                            Notes = "Auto-created when user was assigned Client role",
+                            IsActive = user.IsActive,
+                            CreatedById = user.Id // The user themselves created this record
+                        };
+                        
+                        await _clientRepository.CreateAsync(client);
+                        _logger?.LogInformation($"Automatically created Client record for user {user.Email} when Client role was assigned");
+                    }
+                    else
+                    {
+                        _logger?.LogInformation($"Client record already exists for user {user.Email}, skipping auto-creation");
                     }
                 }
             }

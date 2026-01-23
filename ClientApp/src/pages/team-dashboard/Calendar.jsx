@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Calendar as CalendarIcon, Clock, CheckSquare, Megaphone } from "lucide-react";
 import { tasksAPI, campaignsAPI } from "../../services/api";
-import { generateMockTasks, generateMockCampaigns } from "../../services/mockData";
 
 export default function Calendar() {
     const { userInfo, teamMemberInfo } = useOutletContext();
@@ -20,23 +19,22 @@ export default function Calendar() {
         try {
             setLoading(true);
             
-            // TODO: Replace with real API calls when backend is ready
-            // const tasksResponse = await tasksAPI.getMyTasks();
-            // const campaignsResponse = await campaignsAPI.getAll();
+            const [tasksResponse, campaignsResponse] = await Promise.all([
+                tasksAPI.getMyTasks({ pageSize: 1000 }),
+                campaignsAPI.getAll({ pageSize: 1000 })
+            ]);
             
-            // Use mock data for now
-            const userTasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
-            const userCampaigns = generateMockCampaigns(userInfo.id);
+            const userTasks = tasksResponse.items || [];
+            // The backend already filters campaigns for team members based on CampaignUsers table
+            // So we can trust the backend response - no need for additional filtering
+            const userCampaigns = campaignsResponse.items || [];
             
             setTasks(userTasks);
             setCampaigns(userCampaigns);
         } catch (error) {
             console.error("Error fetching calendar data:", error);
-            // Fallback to mock data
-            const userTasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
-            const userCampaigns = generateMockCampaigns(userInfo.id);
-            setTasks(userTasks);
-            setCampaigns(userCampaigns);
+            setTasks([]);
+            setCampaigns([]);
         } finally {
             setLoading(false);
         }

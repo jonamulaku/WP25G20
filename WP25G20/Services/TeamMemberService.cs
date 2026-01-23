@@ -19,7 +19,9 @@ namespace WP25G20.Services
 
         public async Task<PagedResultDTO<TeamMemberDTO>> GetAllAsync(FilterDTO filter)
         {
-            var query = _context.TeamMembers.AsQueryable();
+            var query = _context.TeamMembers
+                .Include(tm => tm.AssignedTasks)
+                .AsQueryable();
 
             // Apply search
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
@@ -64,23 +66,24 @@ namespace WP25G20.Services
 
             var totalCount = await query.CountAsync();
 
-            var items = await query
+            var teamMembers = await query
                 .Skip((filter.PageNumber - 1) * filter.PageSize)
                 .Take(filter.PageSize)
-                .Select(tm => new TeamMemberDTO
-                {
-                    Id = tm.Id,
-                    FirstName = tm.FirstName,
-                    LastName = tm.LastName,
-                    Email = tm.Email,
-                    Role = tm.Role,
-                    Description = tm.Description,
-                    Phone = tm.Phone,
-                    IsActive = tm.IsActive,
-                    CreatedAt = tm.CreatedAt,
-                    AssignedTaskCount = tm.AssignedTasks.Count
-                })
                 .ToListAsync();
+
+            var items = teamMembers.Select(tm => new TeamMemberDTO
+            {
+                Id = tm.Id,
+                FirstName = tm.FirstName,
+                LastName = tm.LastName,
+                Email = tm.Email,
+                Role = tm.Role,
+                Description = tm.Description,
+                Phone = tm.Phone,
+                IsActive = tm.IsActive,
+                CreatedAt = tm.CreatedAt,
+                AssignedTaskCount = tm.AssignedTasks.Count(t => t.Status != Models.TaskStatus.Pending && t.Status != Models.TaskStatus.Cancelled)
+            }).ToList();
 
             return new PagedResultDTO<TeamMemberDTO>
             {
@@ -107,7 +110,7 @@ namespace WP25G20.Services
                 Phone = teamMember.Phone,
                 IsActive = teamMember.IsActive,
                 CreatedAt = teamMember.CreatedAt,
-                AssignedTaskCount = teamMember.AssignedTasks.Count
+                AssignedTaskCount = teamMember.AssignedTasks.Count(t => t.Status != Models.TaskStatus.Pending && t.Status != Models.TaskStatus.Cancelled)
             };
         }
 

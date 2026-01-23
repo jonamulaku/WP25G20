@@ -1,21 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Filter, ArrowUpDown, X, Calendar, DollarSign, TrendingUp } from "lucide-react";
+import { campaignsAPI } from "../../services/api";
+import { useOutletContext } from "react-router-dom";
 
 export default function MyCampaigns() {
-    const [campaigns, setCampaigns] = useState([
-        { id: 1, name: "Q1 Social Media Campaign", type: "Social Media", status: "Active", budget: 25000, startDate: "2025-01-01", endDate: "2025-03-31", description: "Comprehensive social media campaign for Q1 product launch", spent: 12500, remaining: 12500 },
-        { id: 2, name: "Brand Awareness Campaign", type: "Brand Awareness", status: "Active", budget: 35000, startDate: "2025-02-01", endDate: "2025-04-30", description: "Increase brand visibility across multiple channels", spent: 18200, remaining: 16800 },
-        { id: 3, name: "Product Launch", type: "Product Launch", status: "Completed", budget: 45000, startDate: "2024-12-01", endDate: "2024-12-31", description: "Full product launch campaign with multi-channel approach", spent: 45000, remaining: 0 },
-        { id: 4, name: "Email Marketing Drive", type: "Email Marketing", status: "Active", budget: 15000, startDate: "2025-01-15", endDate: "2025-04-15", description: "Quarterly email marketing campaign", spent: 5200, remaining: 9800 },
-        { id: 5, name: "Holiday Promotion", type: "Promotional", status: "Pending", budget: 20000, startDate: "2025-11-01", endDate: "2025-12-31", description: "Holiday season promotional campaign", spent: 0, remaining: 20000 },
-    ]);
-
+    const { userInfo } = useOutletContext();
+    const [campaigns, setCampaigns] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [sortBy, setSortBy] = useState("name");
     const [sortOrder, setSortOrder] = useState("asc");
     const [selectedCampaign, setSelectedCampaign] = useState(null);
     const [showModal, setShowModal] = useState(false);
+
+    useEffect(() => {
+        fetchCampaigns();
+    }, [userInfo]);
+
+    const fetchCampaigns = async () => {
+        try {
+            setLoading(true);
+            // Fetch campaigns for the current client user
+            const response = await campaignsAPI.getAll({ pageSize: 1000 });
+            // Filter campaigns for the current client (if backend doesn't filter by user)
+            const userCampaigns = response.items || [];
+            setCampaigns(userCampaigns);
+        } catch (error) {
+            console.error('Error fetching campaigns:', error);
+            alert('Failed to fetch campaigns. Please try again.');
+            setCampaigns([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const statusOptions = ["all", "Active", "Completed", "Pending"];
 
@@ -71,6 +89,14 @@ export default function MyCampaigns() {
                 return "bg-slate-500/20 text-slate-400";
         }
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-slate-400">Loading campaigns...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -156,7 +182,7 @@ export default function MyCampaigns() {
                                     onClick={() => openModal(campaign)}
                                 >
                                     <td className="px-6 py-4">
-                                        <span className="text-white font-medium">{campaign.type}</span>
+                                        <span className="text-white font-medium">Package: {campaign.serviceName || campaign.type || "N/A"}</span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(campaign.status)}`}>
@@ -164,13 +190,13 @@ export default function MyCampaigns() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="text-white font-semibold">${campaign.budget.toLocaleString()}</span>
+                                        <span className="text-white font-semibold">${(campaign.budget || 0).toLocaleString()}</span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="text-slate-300">{new Date(campaign.startDate).toLocaleDateString()}</span>
+                                        <span className="text-slate-300">{campaign.startDate ? new Date(campaign.startDate).toLocaleDateString() : "N/A"}</span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="text-slate-300">{new Date(campaign.endDate).toLocaleDateString()}</span>
+                                        <span className="text-slate-300">{campaign.endDate ? new Date(campaign.endDate).toLocaleDateString() : "N/A"}</span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-end">
@@ -208,7 +234,7 @@ export default function MyCampaigns() {
                         <div className="p-6 space-y-6">
                             <div>
                                 <h3 className="text-sm font-semibold text-slate-400 mb-2">Description</h3>
-                                <p className="text-white">{selectedCampaign.description}</p>
+                                <p className="text-white">{selectedCampaign.description || "No description provided"}</p>
                             </div>
                             
                             <div className="grid grid-cols-2 gap-6">
@@ -216,14 +242,14 @@ export default function MyCampaigns() {
                                     <h3 className="text-sm font-semibold text-slate-400 mb-2">Start Date</h3>
                                     <div className="flex items-center gap-2 text-white">
                                         <Calendar size={18} className="text-emerald-400" />
-                                        <span>{new Date(selectedCampaign.startDate).toLocaleDateString()}</span>
+                                        <span>{selectedCampaign.startDate ? new Date(selectedCampaign.startDate).toLocaleDateString() : "N/A"}</span>
                                     </div>
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-semibold text-slate-400 mb-2">End Date</h3>
                                     <div className="flex items-center gap-2 text-white">
                                         <Calendar size={18} className="text-emerald-400" />
-                                        <span>{new Date(selectedCampaign.endDate).toLocaleDateString()}</span>
+                                        <span>{selectedCampaign.endDate ? new Date(selectedCampaign.endDate).toLocaleDateString() : "N/A"}</span>
                                     </div>
                                 </div>
                             </div>
@@ -233,36 +259,38 @@ export default function MyCampaigns() {
                                     <h3 className="text-sm font-semibold text-slate-400 mb-2">Total Budget</h3>
                                     <div className="flex items-center gap-2">
                                         <DollarSign size={18} className="text-emerald-400" />
-                                        <span className="text-2xl font-bold text-white">${selectedCampaign.budget.toLocaleString()}</span>
+                                        <span className="text-2xl font-bold text-white">${(selectedCampaign.budget || 0).toLocaleString()}</span>
                                     </div>
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-semibold text-slate-400 mb-2">Spent So Far</h3>
                                     <div className="flex items-center gap-2">
                                         <TrendingUp size={18} className="text-amber-400" />
-                                        <span className="text-2xl font-bold text-white">${selectedCampaign.spent.toLocaleString()}</span>
+                                        <span className="text-2xl font-bold text-white">${((selectedCampaign.spent || 0)).toLocaleString()}</span>
                                     </div>
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-semibold text-slate-400 mb-2">Remaining Budget</h3>
                                     <div className="flex items-center gap-2">
                                         <DollarSign size={18} className="text-blue-400" />
-                                        <span className="text-2xl font-bold text-white">${selectedCampaign.remaining.toLocaleString()}</span>
+                                        <span className="text-2xl font-bold text-white">${((selectedCampaign.budget || 0) - (selectedCampaign.spent || 0)).toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="pt-4 border-t border-slate-700/50">
-                                <div className="w-full bg-slate-700/50 rounded-full h-3 mb-2">
-                                    <div
-                                        className="h-3 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
-                                        style={{ width: `${(selectedCampaign.spent / selectedCampaign.budget) * 100}%` }}
-                                    />
+                            {selectedCampaign.budget > 0 && (
+                                <div className="pt-4 border-t border-slate-700/50">
+                                    <div className="w-full bg-slate-700/50 rounded-full h-3 mb-2">
+                                        <div
+                                            className="h-3 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+                                            style={{ width: `${((selectedCampaign.spent || 0) / selectedCampaign.budget) * 100}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-sm text-slate-400 text-center">
+                                        {(((selectedCampaign.spent || 0) / selectedCampaign.budget) * 100).toFixed(1)}% of budget used
+                                    </p>
                                 </div>
-                                <p className="text-sm text-slate-400 text-center">
-                                    {((selectedCampaign.spent / selectedCampaign.budget) * 100).toFixed(1)}% of budget used
-                                </p>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -19,7 +19,9 @@ namespace WP25G20.Services
 
         public async Task<PagedResultDTO<ServiceDTO>> GetAllAsync(FilterDTO filter)
         {
-            var query = _context.Services.AsQueryable();
+            var query = _context.Services
+                .Include(s => s.Campaigns)
+                .AsQueryable();
 
             // Apply search
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
@@ -56,22 +58,23 @@ namespace WP25G20.Services
 
             var totalCount = await query.CountAsync();
 
-            var items = await query
+            var services = await query
                 .Skip((filter.PageNumber - 1) * filter.PageSize)
                 .Take(filter.PageSize)
-                .Select(s => new ServiceDTO
-                {
-                    Id = s.Id,
-                    Name = s.Name,
-                    Description = s.Description,
-                    Deliverables = s.Deliverables,
-                    BasePrice = s.BasePrice,
-                    PricingType = s.PricingType.ToString(),
-                    IsActive = s.IsActive,
-                    CreatedAt = s.CreatedAt,
-                    CampaignCount = s.Campaigns.Count
-                })
                 .ToListAsync();
+
+            var items = services.Select(s => new ServiceDTO
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Description = s.Description,
+                Deliverables = s.Deliverables,
+                BasePrice = s.BasePrice,
+                PricingType = s.PricingType.ToString(),
+                IsActive = s.IsActive,
+                CreatedAt = s.CreatedAt,
+                CampaignCount = s.Campaigns.Count(c => c.Status != CampaignStatus.Cancelled && c.Status != CampaignStatus.Pending)
+            }).ToList();
 
             return new PagedResultDTO<ServiceDTO>
             {
@@ -97,7 +100,7 @@ namespace WP25G20.Services
                 PricingType = service.PricingType.ToString(),
                 IsActive = service.IsActive,
                 CreatedAt = service.CreatedAt,
-                CampaignCount = service.Campaigns.Count
+                CampaignCount = service.Campaigns.Count(c => c.Status != CampaignStatus.Cancelled && c.Status != CampaignStatus.Pending)
             };
         }
 
@@ -148,6 +151,9 @@ namespace WP25G20.Services
             }
 
             var updated = await _repository.UpdateAsync(service);
+            
+            // Reload with campaigns included for count
+            var serviceWithCampaigns = await _repository.GetByIdAsync(updated.Id);
 
             return new ServiceDTO
             {
@@ -159,7 +165,7 @@ namespace WP25G20.Services
                 PricingType = updated.PricingType.ToString(),
                 IsActive = updated.IsActive,
                 CreatedAt = updated.CreatedAt,
-                CampaignCount = updated.Campaigns.Count
+                CampaignCount = serviceWithCampaigns?.Campaigns.Count(c => c.Status != CampaignStatus.Cancelled && c.Status != CampaignStatus.Pending) ?? 0
             };
         }
 

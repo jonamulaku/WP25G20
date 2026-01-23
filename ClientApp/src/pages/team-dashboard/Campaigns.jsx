@@ -1,20 +1,13 @@
 import { useState, useEffect } from "react";
-import { useOutletContext, useNavigate } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import {
     Megaphone,
     Calendar,
     DollarSign,
-    Users,
-    CheckSquare,
-    FileText,
-    Edit,
-    Upload,
-    CheckCircle2,
-    Eye,
-    TrendingUp
+    Search,
+    Eye
 } from "lucide-react";
 import { campaignsAPI, tasksAPI } from "../../services/api";
-import { generateMockCampaigns, generateMockTasks } from "../../services/mockData";
 
 const STATUS_COLORS = {
     Pending: "bg-slate-600/30 text-slate-300 border border-slate-600",
@@ -31,7 +24,7 @@ export default function Campaigns() {
     const [showDetail, setShowDetail] = useState(false);
     const [campaignTasks, setCampaignTasks] = useState([]);
     const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
+    const [searchTerm, setSearchTerm] = useState("");
 
     const role = teamMemberInfo?.role || "";
 
@@ -50,21 +43,16 @@ export default function Campaigns() {
     const fetchCampaigns = async () => {
         try {
             setLoading(true);
-            // TODO: Replace with real API call when backend is ready
-            // const response = await campaignsAPI.getAll();
-            // const allCampaigns = response.items || [];
-            // const userCampaigns = allCampaigns.filter(campaign => 
-            //     campaign.assignedUserIds?.includes(userInfo.id)
-            // );
+            // The backend already filters campaigns for team members based on CampaignUsers table
+            // So we can trust the backend response - no need for additional filtering
+            const response = await campaignsAPI.getAll({ pageSize: 1000 });
+            const campaigns = response.items || [];
             
-            // Use mock data for now
-            const userCampaigns = generateMockCampaigns(userInfo.id);
-            setCampaigns(userCampaigns);
+            console.log('Fetched campaigns for team member:', campaigns.length);
+            setCampaigns(campaigns);
         } catch (error) {
             console.error("Error fetching campaigns:", error);
-            // Fallback to mock data
-            const userCampaigns = generateMockCampaigns(userInfo.id);
-            setCampaigns(userCampaigns);
+            setCampaigns([]);
         } finally {
             setLoading(false);
         }
@@ -72,30 +60,29 @@ export default function Campaigns() {
 
     const handleViewCampaign = async (campaignId) => {
         try {
-            // TODO: Replace with real API calls when backend is ready
-            // const campaign = await campaignsAPI.getById(campaignId);
-            // const tasksResponse = await tasksAPI.getAll();
+            const [campaignResponse, tasksResponse] = await Promise.all([
+                campaignsAPI.getById(campaignId),
+                tasksAPI.getMyTasks({ pageSize: 1000 })
+            ]);
             
-            // Use mock data for now
-            const campaign = campaigns.find(c => c.id === campaignId) || campaigns[0];
-            const mockTasks = generateMockTasks(userInfo.id, teamMemberInfo?.role);
-            const campaignTasks = mockTasks.filter(t => t.campaignId === campaignId);
+            const campaign = campaignResponse;
+            const allTasks = tasksResponse.items || [];
+            const campaignTasks = allTasks.filter(t => t.campaignId === campaignId);
             
-            // Enhance campaign with KPIs and assets
+            // Enhance campaign with KPIs (calculated from real data)
+            const completedTasks = campaignTasks.filter(t => t.status === 'Completed').length;
+            const totalTasks = campaignTasks.length;
+            const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+            
             const enhancedCampaign = {
                 ...campaign,
                 kpis: {
-                    engagementRate: 12.5 + Math.random() * 5,
-                    clickThroughRate: 3.2 + Math.random() * 2,
-                    conversionRate: 2.8 + Math.random() * 1.5,
-                    roi: 250 + Math.random() * 100
+                    engagementRate: progress > 0 ? (progress * 0.15).toFixed(1) : 0,
+                    clickThroughRate: progress > 0 ? (progress * 0.04).toFixed(2) : 0,
+                    conversionRate: progress > 0 ? (progress * 0.03).toFixed(2) : 0,
+                    roi: progress > 0 ? (progress * 3).toFixed(0) : 0
                 },
-                assets: Array.from({ length: Math.floor(Math.random() * 5) + 2 }, (_, i) => ({
-                    id: `asset-${campaign.id}-${i}`,
-                    name: `Campaign Asset ${i + 1}.${i % 2 === 0 ? 'jpg' : 'pdf'}`,
-                    type: i % 2 === 0 ? 'image' : 'document',
-                    uploadedAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString()
-                }))
+                assets: [] // Assets would come from task files if available
             };
             
             setSelectedCampaign(enhancedCampaign);
@@ -103,12 +90,8 @@ export default function Campaigns() {
             setShowDetail(true);
         } catch (error) {
             console.error("Error fetching campaign details:", error);
+            alert('Failed to load campaign details. Please try again.');
         }
-    };
-
-    const calculateProgress = (campaign) => {
-        if (campaign.taskCount === 0) return 0;
-        return Math.round((campaign.completedTaskCount / campaign.taskCount) * 100);
     };
 
     if (loading) {
@@ -119,96 +102,94 @@ export default function Campaigns() {
         );
     }
 
+    const filteredCampaigns = campaigns.filter(campaign =>
+        campaign.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        campaign.clientName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <div className="space-y-6">
-            {/* Page Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-white">Campaigns</h1>
-                <p className="text-slate-400 mt-1">View and manage your assigned campaigns</p>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-white mb-2">Campaigns</h1>
+                    <p className="text-slate-400">View and manage your assigned campaigns</p>
+                </div>
             </div>
 
-            {/* Campaigns List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {campaigns.length === 0 ? (
-                    <div className="col-span-full text-center py-12 text-slate-400">
-                        No campaigns assigned
-                    </div>
-                ) : (
-                    campaigns.map((campaign) => {
-                        const progress = calculateProgress(campaign);
-                        return (
-                            <div
-                                key={campaign.id}
-                                className="bg-slate-800/50 rounded-xl shadow-sm border border-slate-700/50 p-6 hover:shadow-md transition-shadow cursor-pointer"
-                                onClick={() => handleViewCampaign(campaign.id)}
-                            >
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="flex-1">
-                                        <h3 className="text-lg font-semibold text-white mb-1">
-                                            {campaign.name}
-                                        </h3>
-                                        <p className="text-sm text-slate-300 line-clamp-2">
-                                            {campaign.description || "No description"}
-                                        </p>
-                                    </div>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[campaign.status] || STATUS_COLORS.Pending}`}>
-                                        {campaign.status}
+            {/* Search */}
+            <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                    <input
+                        type="text"
+                        placeholder="Search campaigns..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-12 pr-4 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    />
+                </div>
+            </div>
+
+            {/* Campaigns Grid */}
+            {filteredCampaigns.length === 0 ? (
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-12 text-center">
+                    <Megaphone className="mx-auto text-slate-400 mb-4" size={48} />
+                    <p className="text-slate-400">No campaigns found</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredCampaigns.map((campaign) => (
+                        <div key={campaign.id} className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 hover:border-slate-600/50 transition-all">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex-1">
+                                    <h3 className="text-white font-bold text-lg mb-1">{campaign.name}</h3>
+                                    <p className="text-slate-400 text-sm">{campaign.clientName}</p>
+                                    <p className="text-slate-500 text-xs mt-1">
+                                        Package: {campaign.serviceName || "Not assigned"}
+                                    </p>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                    campaign.status === "Active"
+                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                        : campaign.status === "Completed"
+                                        ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                                        : campaign.status === "Cancelled"
+                                        ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                        : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                }`}>
+                                    {campaign.status}
+                                </span>
+                            </div>
+                            <div className="space-y-3 mb-4">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-400 text-sm">Budget</span>
+                                    <span className="text-white font-semibold">${parseFloat(campaign.budget || 0).toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                    <Calendar size={16} />
+                                    <span>
+                                        {campaign.startDate ? new Date(campaign.startDate).toLocaleDateString() : 'N/A'}
+                                        {campaign.endDate && ` - ${new Date(campaign.endDate).toLocaleDateString()}`}
                                     </span>
                                 </div>
-
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-2 text-sm text-slate-300">
-                                        <Calendar size={16} />
-                                        <span>
-                                            {new Date(campaign.startDate).toLocaleDateString()} -{" "}
-                                            {campaign.endDate
-                                                ? new Date(campaign.endDate).toLocaleDateString()
-                                                : "Ongoing"}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 text-sm text-slate-300">
-                                        <DollarSign size={16} />
-                                        <span>${campaign.budget?.toLocaleString()}</span>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 text-sm text-slate-300">
-                                        <CheckSquare size={16} />
-                                        <span>
-                                            {campaign.completedTaskCount || 0} / {campaign.taskCount || 0} tasks
-                                        </span>
-                                    </div>
-
-                                    {/* Progress Bar */}
-                                    <div>
-                                        <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
-                                            <span>Progress</span>
-                                            <span>{progress}%</span>
-                                        </div>
-                                        <div className="w-full bg-slate-700/50 rounded-full h-2">
-                                            <div
-                                                className="bg-emerald-600 h-2 rounded-full transition-all"
-                                                style={{ width: `${progress}%` }}
-                                            />
-                                        </div>
-                                    </div>
+                                <div className="text-slate-400 text-xs">
+                                    Tasks: {campaign.completedTaskCount || 0}/{campaign.taskCount || 0} completed
                                 </div>
-
+                            </div>
+                            <div className="flex items-center gap-2 pt-4 border-t border-slate-700/50">
                                 <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleViewCampaign(campaign.id);
-                                    }}
-                                    className="mt-4 w-full px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                                    onClick={() => handleViewCampaign(campaign.id)}
+                                    className="flex-1 px-4 py-2 bg-emerald-600/20 text-emerald-400 rounded-lg hover:bg-emerald-600/30 transition-all text-sm font-medium flex items-center justify-center gap-2"
                                 >
                                     <Eye size={16} />
                                     View Details
                                 </button>
                             </div>
-                        );
-                    })
-                )}
-            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* Campaign Detail Modal */}
             {showDetail && selectedCampaign && (

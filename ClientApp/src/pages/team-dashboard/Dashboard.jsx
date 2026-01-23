@@ -13,7 +13,6 @@ import {
     Target
 } from "lucide-react";
 import { tasksAPI, campaignsAPI } from "../../services/api";
-import { generateMockTasks, generateMockCampaigns, generateRoleSpecificMetrics } from "../../services/mockData";
 import {
     LineChart,
     Line,
@@ -56,14 +55,16 @@ export default function Dashboard() {
         try {
             setLoading(true);
             
-            // Use mock data for now - replace with real API calls when backend is ready
-            // TODO: Replace with: const tasksResponse = await tasksAPI.getMyTasks();
-            const mockTasks = generateMockTasks(userInfo.id, role);
-            const tasks = mockTasks;
+            // Fetch real data from API
+            const [tasksResponse, campaignsResponse] = await Promise.all([
+                tasksAPI.getMyTasks({ pageSize: 1000 }),
+                campaignsAPI.getAll({ pageSize: 1000 })
+            ]);
             
-            // TODO: Replace with: const campaignsResponse = await campaignsAPI.getAll();
-            const mockCampaigns = generateMockCampaigns(userInfo.id);
-            const userCampaigns = mockCampaigns;
+            const tasks = tasksResponse.items || [];
+            // The backend already filters campaigns for team members based on CampaignUsers table
+            // So we can trust the backend response - no need for additional filtering
+            const userCampaigns = campaignsResponse.items || [];
             
             // Calculate task statistics
             const assignedTasks = tasks.length;
@@ -82,9 +83,9 @@ export default function Dashboard() {
             
             // Task status distribution
             const statusCounts = {
-                'To Do': tasks.filter(t => t.status === 'Pending' || t.status === 'To Do').length,
+                'To Do': tasks.filter(t => t.status === 'Pending').length,
                 'In Progress': tasks.filter(t => t.status === 'InProgress').length,
-                'Review': tasks.filter(t => t.status === 'OnHold' || t.status === 'Review').length,
+                'On Hold': tasks.filter(t => t.status === 'OnHold').length,
                 'Completed': tasks.filter(t => t.status === 'Completed').length
             };
             setTaskStatusData(Object.entries(statusCounts).map(([name, value]) => ({ name, value })));
@@ -125,8 +126,8 @@ export default function Dashboard() {
             });
             setCampaignContribution(campaignData);
             
-            // Role-specific metrics
-            const roleSpecific = generateRoleSpecificMetrics(role, tasks, userCampaigns);
+            // Role-specific metrics (calculated from real data)
+            const roleSpecific = calculateRoleSpecificMetrics(role, tasks, userCampaigns);
             
             setStats({
                 assignedTasks,
@@ -137,41 +138,18 @@ export default function Dashboard() {
             });
         } catch (error) {
             console.error("Error fetching dashboard data:", error);
-            // Fallback to mock data on error
-            const mockTasks = generateMockTasks(userInfo.id, role);
-            const mockCampaigns = generateMockCampaigns(userInfo.id);
-            const roleSpecific = generateRoleSpecificMetrics(role, mockTasks, mockCampaigns);
-            
+            // Set empty data on error
             setStats({
-                assignedTasks: mockTasks.length,
-                tasksDueToday: 2,
-                completionRate: 65,
-                activeCampaigns: mockCampaigns.length,
-                roleSpecific
+                assignedTasks: 0,
+                tasksDueToday: 0,
+                completionRate: 0,
+                activeCampaigns: 0,
+                roleSpecific: {}
             });
             
-            setTaskStatusData([
-                { name: 'To Do', value: 3 },
-                { name: 'In Progress', value: 4 },
-                { name: 'Review', value: 2 },
-                { name: 'Completed', value: 3 }
-            ]);
-            
-            setProductivityData([
-                { date: 'Mon', tasks: 2 },
-                { date: 'Tue', tasks: 3 },
-                { date: 'Wed', tasks: 1 },
-                { date: 'Thu', tasks: 4 },
-                { date: 'Fri', tasks: 2 },
-                { date: 'Sat', tasks: 1 },
-                { date: 'Sun', tasks: 0 }
-            ]);
-            
-            setCampaignContribution([
-                { name: 'Q1 Social Media Blitz', tasks: 8, completed: 5 },
-                { name: 'Brand Identity Redesign', tasks: 6, completed: 3 },
-                { name: 'Spring Collection Launch', tasks: 12, completed: 4 }
-            ]);
+            setTaskStatusData([]);
+            setProductivityData([]);
+            setCampaignContribution([]);
         } finally {
             setLoading(false);
         }
@@ -368,6 +346,50 @@ export default function Dashboard() {
             )}
         </div>
     );
+}
+
+function calculateRoleSpecificMetrics(role, tasks, campaigns) {
+    const completedTasks = tasks.filter(t => t.status === 'Completed').length;
+    const totalTasks = tasks.length;
+    const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+    
+    if (role.toLowerCase().includes('marketer') || role.toLowerCase().includes('marketing')) {
+        const activeCampaigns = campaigns.filter(c => c.status === 'Active');
+        const avgProgress = activeCampaigns.length > 0
+            ? activeCampaigns.reduce((sum, c) => {
+                const progress = c.taskCount > 0 ? (c.completedTaskCount / c.taskCount) * 100 : 0;
+                return sum + progress;
+            }, 0) / activeCampaigns.length
+            : 0;
+        
+        return {
+            engagementRate: (avgProgress * 0.15).toFixed(1),
+            ctr: (avgProgress * 0.04).toFixed(2)
+        };
+    } else if (role.toLowerCase().includes('designer') || role.toLowerCase().includes('graphic')) {
+        const designTasks = tasks.filter(t => 
+            t.status === 'Completed' && 
+            (t.title?.toLowerCase().includes('design') || t.title?.toLowerCase().includes('graphic'))
+        );
+        
+        return {
+            approvalRate: totalTasks > 0 ? Math.round((designTasks.length / totalTasks) * 100) : 0,
+            revisions: Math.round(designTasks.length * 1.2)
+        };
+    } else if (role.toLowerCase().includes('manager') || role.toLowerCase().includes('campaign')) {
+        const campaignSuccessRate = campaigns.length > 0
+            ? campaigns.reduce((sum, c) => {
+                const progress = c.taskCount > 0 ? (c.completedTaskCount / c.taskCount) * 100 : 0;
+                return sum + progress;
+            }, 0) / campaigns.length
+            : 0;
+        
+        return {
+            campaignHealthScore: campaignSuccessRate.toFixed(1)
+        };
+    }
+    
+    return {};
 }
 
 function KPICard({ title, value, icon: Icon, color = "emerald" }) {

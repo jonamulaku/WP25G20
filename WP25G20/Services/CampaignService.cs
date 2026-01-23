@@ -43,13 +43,26 @@ namespace WP25G20.Services
                 .Include(c => c.Service)
                 .Include(c => c.CreatedBy)
                 .Include(c => c.CampaignUsers)
+                .Include(c => c.Tasks)
+                    .ThenInclude(t => t.AssignedToTeamMember)
                 .AsQueryable();
 
             // If userId provided and not admin, filter to only show campaigns user has access to
             if (!string.IsNullOrEmpty(userId) && (isAdmin == null || !isAdmin.Value))
             {
-                query = query.Where(c => c.CreatedById == userId || 
-                                         c.CampaignUsers.Any(cu => cu.UserId == userId));
+                // Get the user to find their email for TeamMember lookup
+                var user = await _userManager.FindByIdAsync(userId);
+                var teamMember = user != null 
+                    ? await _context.TeamMembers.FirstOrDefaultAsync(tm => tm.Email.ToLower() == user.Email.ToLower())
+                    : null;
+
+                query = query.Where(c => 
+                    c.CreatedById == userId || 
+                    c.CampaignUsers.Any(cu => cu.UserId == userId) ||
+                    // Also show campaigns where user has tasks assigned
+                    (teamMember != null && c.Tasks.Any(t => t.AssignedToTeamMemberId == teamMember.Id)) ||
+                    (teamMember == null && c.Tasks.Any(t => t.AssignedToId == userId))
+                );
             }
 
             // Apply search
@@ -131,7 +144,7 @@ namespace WP25G20.Services
                     Status = c.Status.ToString(),
                     Notes = c.Notes,
                     CreatedAt = c.CreatedAt,
-                    TaskCount = c.Tasks.Count,
+                    TaskCount = c.Tasks.Count(t => t.Status != TaskStatus.Pending && t.Status != TaskStatus.Cancelled),
                     CompletedTaskCount = c.Tasks.Count(t => t.Status == TaskStatus.Completed),
                     AssignedUserIds = assignedUserIds
                 });
@@ -193,7 +206,7 @@ namespace WP25G20.Services
                 Status = campaign.Status.ToString(),
                 Notes = campaign.Notes,
                 CreatedAt = campaign.CreatedAt,
-                TaskCount = campaign.Tasks.Count,
+                TaskCount = campaign.Tasks.Count(t => t.Status != TaskStatus.Pending && t.Status != TaskStatus.Cancelled),
                 CompletedTaskCount = campaign.Tasks.Count(t => t.Status == TaskStatus.Completed),
                 AssignedUserIds = assignedUserIds
             };
@@ -284,10 +297,18 @@ namespace WP25G20.Services
                 throw new UnauthorizedAccessException("You do not have permission to update this campaign.");
             }
 
+            // Validate service exists if ServiceId is being changed
+            if (dto.ServiceId != campaign.ServiceId)
+            {
+                if (!await _serviceRepository.ExistsAsync(dto.ServiceId))
+                    throw new ArgumentException("Service not found");
+            }
+
             var oldValues = $"{{\"Name\":\"{campaign.Name}\",\"Status\":\"{campaign.Status}\",\"Budget\":{campaign.Budget}}}";
 
             campaign.Name = dto.Name;
             campaign.Description = dto.Description;
+            campaign.ServiceId = dto.ServiceId;
             campaign.StartDate = dto.StartDate;
             campaign.EndDate = dto.EndDate;
             campaign.Budget = dto.Budget;

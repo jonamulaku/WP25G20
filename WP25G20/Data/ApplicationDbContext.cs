@@ -24,6 +24,7 @@ namespace WP25G20.Data
         public DbSet<TaskComment> TaskComments { get; set; }
         public DbSet<ActivityLog> ActivityLogs { get; set; }
         public DbSet<TeamMember> TeamMembers { get; set; }
+        public DbSet<Message> Messages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -164,6 +165,37 @@ namespace WP25G20.Data
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            builder.Entity<Message>(entity =>
+            {
+                entity.HasOne(e => e.SenderUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.SenderUserId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(e => e.RecipientUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.RecipientUserId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(e => e.Client)
+                    .WithMany()
+                    .HasForeignKey(e => e.ClientId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.TeamMember)
+                    .WithMany()
+                    .HasForeignKey(e => e.TeamMemberId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.ParentMessage)
+                    .WithMany(m => m.Replies)
+                    .HasForeignKey(e => e.ParentMessageId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => new { e.Type, e.Status });
             });
         }
     }

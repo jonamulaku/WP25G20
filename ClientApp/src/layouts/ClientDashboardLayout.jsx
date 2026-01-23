@@ -203,7 +203,7 @@ export default function ClientDashboardLayout() {
 
                 {/* Page Content */}
                 <main className="p-4 lg:p-6">
-                    <Outlet />
+                    <Outlet context={{ userInfo }} />
                 </main>
             </div>
         </div>

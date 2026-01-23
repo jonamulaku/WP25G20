@@ -19,6 +19,7 @@ import Contact from "./pages/Contact";
 import DashboardOverview from "./pages/dashboard/DashboardOverview";
 import ClientsPage from "./pages/dashboard/ClientsPage";
 import CampaignsPage from "./pages/dashboard/CampaignsPage";
+import ServicesPage from "./pages/dashboard/ServicesPage";
 import TasksPage from "./pages/dashboard/TasksPage";
 import ReportsPage from "./pages/dashboard/ReportsPage";
 import TeamPage from "./pages/dashboard/TeamPage";
@@ -134,6 +135,7 @@ export default function App() {
                 <Route index element={<DashboardOverview />} />
                 <Route path="clients" element={<ClientsPage />} />
                 <Route path="campaigns" element={<CampaignsPage />} />
+                <Route path="services" element={<ServicesPage />} />
                 <Route path="tasks" element={<TasksPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="team" element={<TeamPage />} />

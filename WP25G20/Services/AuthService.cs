@@ -88,7 +88,7 @@ namespace WP25G20.Services
                 throw new InvalidOperationException(string.Join(", ", result.Errors.Select(e => e.Description)));
             }
 
-            // Assign default role (User)
+            // Assign default role (User) - Admin can change this later
             await _userManager.AddToRoleAsync(user, "User");
 
             var roles = await _userManager.GetRolesAsync(user);

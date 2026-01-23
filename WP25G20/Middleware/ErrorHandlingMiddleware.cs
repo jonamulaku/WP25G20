@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace WP25G20.Middleware
 {
@@ -36,7 +37,7 @@ namespace WP25G20.Middleware
             {
                 case UnauthorizedAccessException:
                     code = HttpStatusCode.Unauthorized;
-                    message = "You are not authorized to perform this action.";
+                    message = exception.Message;
                     break;
                 case ArgumentException:
                 case InvalidOperationException:
@@ -47,6 +48,19 @@ namespace WP25G20.Middleware
                 case FileNotFoundException:
                     code = HttpStatusCode.NotFound;
                     message = "The requested resource was not found.";
+                    break;
+                case DbUpdateException dbEx:
+                    code = HttpStatusCode.BadRequest;
+                    // Check if it's a foreign key constraint violation
+                    if (dbEx.InnerException?.Message.Contains("FOREIGN KEY") == true || 
+                        dbEx.InnerException?.Message.Contains("DELETE statement conflicted") == true)
+                    {
+                        message = "Cannot delete this item because it has related records. Please delete or reassign related items first.";
+                    }
+                    else
+                    {
+                        message = "A database error occurred while processing your request.";
+                    }
                     break;
             }
 

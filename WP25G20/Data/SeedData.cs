@@ -17,7 +17,7 @@ namespace WP25G20.Data
             try
             {
                 // Create roles
-                string[] roles = { "Admin", "Client", "User" };
+                string[] roles = { "Admin", "Client", "Team", "User" };
                 foreach (var role in roles)
                 {
                     if (!await roleManager.RoleExistsAsync(role))
@@ -69,7 +69,7 @@ namespace WP25G20.Data
                 }
             }
 
-            // Create test user
+            // Create test user (Team member)
             var testEmail = "user@marketingagency.com";
             var testPassword = "User123!";
 
@@ -90,7 +90,7 @@ namespace WP25G20.Data
                 var result = await userManager.CreateAsync(testUser, testPassword);
                 if (result.Succeeded)
                 {
-                    await userManager.AddToRoleAsync(testUser, "User");
+                    await userManager.AddToRoleAsync(testUser, "Team");
                     Console.WriteLine($"Test user created: {testEmail} / {testPassword}");
                 }
             }
@@ -138,7 +138,7 @@ namespace WP25G20.Data
                     Password = "Team123!",
                     FirstName = "Alex",
                     LastName = "Martinez",
-                    Role = "User"
+                    Role = "Team"
                 },
                 new
                 {
@@ -146,7 +146,7 @@ namespace WP25G20.Data
                     Password = "Team123!",
                     FirstName = "Sarah",
                     LastName = "Chen",
-                    Role = "User"
+                    Role = "Team"
                 },
                 new
                 {
@@ -154,7 +154,7 @@ namespace WP25G20.Data
                     Password = "Team123!",
                     FirstName = "Michael",
                     LastName = "Thompson",
-                    Role = "User"
+                    Role = "Team"
                 }
             };
 
@@ -183,7 +183,7 @@ namespace WP25G20.Data
                 }
                 else
                 {
-                    // Ensure team member has User role
+                    // Ensure team member has Team role
                     if (!await userManager.IsInRoleAsync(teamUser, cred.Role))
                     {
                         await userManager.AddToRoleAsync(teamUser, cred.Role);
@@ -248,6 +248,59 @@ namespace WP25G20.Data
                 {
                     context.TeamMembers.Add(teamMember);
                     Console.WriteLine($"Team member created: {teamMember.FirstName} {teamMember.LastName} - {teamMember.Role}");
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        public static async System.Threading.Tasks.Task SeedServicesAsync(IServiceProvider serviceProvider)
+        {
+            var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var services = new[]
+            {
+                new Service
+                {
+                    Name = "Basic",
+                    Description = "Perfect for small businesses getting started with digital marketing",
+                    Deliverables = "Social media management (3 platforms), 10 posts/month, Basic SEO, Monthly reports, Basic logo design, Simple brand guidelines, 1 campaign strategy session/month",
+                    BasePrice = 2500,
+                    PricingType = ServicePricingType.Monthly,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Service
+                {
+                    Name = "Standard",
+                    Description = "Ideal for growing businesses ready to scale their marketing efforts",
+                    Deliverables = "Social media management (5 platforms), 20 posts/month, Advanced SEO, Paid ads, Bi-weekly reports, Professional brand identity, Complete brand guidelines, 2 campaign strategy sessions/month",
+                    BasePrice = 5000,
+                    PricingType = ServicePricingType.Monthly,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Service
+                {
+                    Name = "Premium",
+                    Description = "Comprehensive marketing solution for established businesses",
+                    Deliverables = "Unlimited social media management, 40+ posts/month, Full SEO strategy, Multi-channel paid ads, Weekly reports, Complete brand strategy, Full creative design services, Unlimited campaign strategy sessions",
+                    BasePrice = 10000,
+                    PricingType = ServicePricingType.Monthly,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            foreach (var service in services)
+            {
+                var exists = await context.Services
+                    .AnyAsync(s => s.Name == service.Name);
+
+                if (!exists)
+                {
+                    context.Services.Add(service);
+                    Console.WriteLine($"Service created: {service.Name} - ${service.BasePrice}/month");
                 }
             }
 

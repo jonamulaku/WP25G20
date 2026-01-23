@@ -23,6 +23,7 @@ namespace WP25G20.Repositories
         public async Task<Service?> GetByIdAsync(int id)
         {
             return await _context.Services
+                .Include(s => s.Campaigns)
                 .FirstOrDefaultAsync(s => s.Id == id);
         }
 

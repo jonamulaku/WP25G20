@@ -13,5 +13,6 @@ namespace WP25G20.Services
         Task<bool> DeleteAsync(int id, string userId, bool isAdmin);
         Task<bool> MarkAsPaidAsync(int id, DateTime paidDate, string userId);
         Task<bool> MarkAsSentAsync(int id, string userId);
+        Task<IEnumerable<InvoiceDTO>> EnsureInvoicesForCampaignsAsync(string? userId, bool isAdmin);
     }
 }

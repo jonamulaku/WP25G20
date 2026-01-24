@@ -9,7 +9,7 @@ import {
     ArrowUpRight
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { campaignsAPI } from "../../services/api";
+import { campaignsAPI, approvalsAPI, tasksAPI } from "../../services/api";
 import { useOutletContext } from "react-router-dom";
 
 export default function ClientDashboard() {
@@ -32,20 +32,53 @@ export default function ClientDashboard() {
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
-            const response = await campaignsAPI.getAll({ pageSize: 1000 });
-            const campaigns = response.items || [];
+            const [campaignsRes] = await Promise.all([
+                campaignsAPI.getAll({ pageSize: 1000 })
+            ]);
+            const campaigns = campaignsRes.items || [];
             
             // Calculate stats from real data
             const activeCampaigns = campaigns.filter(c => c.status === 'Active').length;
             const totalBudget = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
-            const spent = campaigns.reduce((sum, c) => sum + (c.spent || 0), 0);
+            const totalTasks = campaigns.reduce((sum, c) => sum + (c.taskCount || 0), 0);
+            const completedTasks = campaigns.reduce((sum, c) => sum + (c.completedTaskCount || 0), 0);
+            
+            // Get pending approvals count - count completed tasks that haven't been approved yet
+            let pendingApprovals = 0;
+            try {
+                // Fetch all tasks for client's campaigns
+                const tasksRes = await tasksAPI.getAll({ pageSize: 1000 });
+                const allTasks = tasksRes.items || [];
+                
+                // Get client's campaign IDs
+                const clientCampaignIds = campaigns.map(c => c.id);
+                
+                // Filter to completed tasks in client's campaigns
+                const clientCompletedTasks = allTasks.filter(task => 
+                    task.status === "Completed" && 
+                    clientCampaignIds.includes(task.campaignId)
+                );
+                
+                // Fetch approval requests to see which tasks are approved
+                const approvalsRes = await approvalsAPI.getAll({ pageSize: 1000 });
+                const approvedTaskIds = new Set(
+                    (approvalsRes.items || [])
+                        .filter(a => a.taskId && a.status === "Approved")
+                        .map(a => a.taskId)
+                );
+                
+                // Count completed tasks that haven't been approved yet
+                pendingApprovals = clientCompletedTasks.filter(task => !approvedTaskIds.has(task.id)).length;
+            } catch (error) {
+                console.warn('Could not fetch approvals:', error);
+            }
             
             setStats({
                 activeCampaigns,
                 totalBudget,
-                spent,
-                pendingApprovals: 0, // TODO: Implement when approvals API is ready
-                approvedItems: 0, // TODO: Implement when approvals API is ready
+                spent: 0, // Budget spent tracking can be added later
+                pendingApprovals,
+                approvedItems: completedTasks,
                 pendingInvoices: 0 // TODO: Implement when invoices API is ready
             });
         } catch (error) {

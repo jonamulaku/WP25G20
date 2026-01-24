@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useEffect } from "react";
 import {
     ArrowRight,
     Target,
@@ -32,6 +33,10 @@ const styles = `
     from { opacity: 0; transform: translateX(30px); }
     to { opacity: 1; transform: translateX(0); }
   }
+  @keyframes fade-in-left {
+    from { opacity: 0; transform: translateX(-30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
   @keyframes float {
     0%, 100% { transform: translateY(0px); }
     50% { transform: translateY(-20px); }
@@ -44,19 +49,22 @@ const styles = `
     from { opacity: 0; transform: translateY(40px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  @keyframes gradient {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
   }
-  @keyframes rotate-slow {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+  @keyframes rotate-in {
+    from { opacity: 0; transform: rotate(-5deg) scale(0.95); }
+    to { opacity: 1; transform: rotate(0) scale(1); }
   }
   .animate-fade-in {
     animation: fade-in 0.8s ease-out;
   }
   .animate-fade-in-right {
     animation: fade-in-right 1s ease-out;
+  }
+  .animate-fade-in-left {
+    animation: fade-in-left 1s ease-out;
   }
   .animate-float {
     animation: float 6s ease-in-out infinite;
@@ -67,9 +75,26 @@ const styles = `
   .animate-slide-up {
     animation: slide-up 0.8s ease-out forwards;
   }
-  .animate-gradient {
-    background-size: 200% auto;
-    animation: gradient 3s linear infinite;
+  .animate-scale-in {
+    animation: scale-in 0.6s ease-out forwards;
+  }
+  .animate-rotate-in {
+    animation: rotate-in 0.7s ease-out forwards;
+  }
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+  .scroll-reveal.revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 `;
 
@@ -211,6 +236,27 @@ const differentiators = [
 ];
 
 export default function AboutUs() {
+    // Scroll reveal animation
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('revealed');
+                    }
+                });
+            },
+            { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+        );
+
+        const elements = document.querySelectorAll('.scroll-reveal');
+        elements.forEach((el) => observer.observe(el));
+
+        return () => {
+            elements.forEach((el) => observer.unobserve(el));
+        };
+    }, []);
+
     return (
         <>
             <style>{styles}</style>
@@ -222,20 +268,20 @@ export default function AboutUs() {
                     <div className="container mx-auto px-6 lg:px-24 xl:px-32 py-16 lg:py-20 relative z-10">
                         <div className="grid lg:grid-cols-2 gap-16 items-center">
                             {/* LEFT */}
-                            <div className="space-y-8 animate-fade-in">
+                            <div className="space-y-8 relative z-10">
                                 {/* Breadcrumb */}
-                                <nav className="flex items-center gap-2 text-sm text-emerald-50">
+                                <nav className="flex items-center gap-2 text-sm text-emerald-50 animate-fade-in">
                                     <Link to="/" className="hover:text-white transition-colors">Home</Link>
                                     <span className="text-emerald-200">/</span>
                                     <span className="text-white font-medium">About Us</span>
                                 </nav>
 
-                                <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-md rounded-full text-white text-sm font-semibold border border-white/30 shadow-lg hover:bg-white/25 transition-all duration-300">
+                                <div className="inline-flex items-center gap-2 px-5 py-2.5 glass-effect rounded-full text-white text-sm font-semibold shadow-xl hover:bg-white/30 hover:scale-105 transition-all duration-300 animate-fade-in">
                                     <Sparkles size={16} className="shrink-0" />
                                     <span>Our Story</span>
                                 </div>
 
-                                <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold leading-[1.1] text-white tracking-tight">
+                                <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold leading-[1.1] text-white tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>
                                     Building Brands That
                                     <br />
                                     <span className="bg-gradient-to-r from-emerald-100 via-white to-emerald-100 bg-clip-text text-transparent">
@@ -243,7 +289,7 @@ export default function AboutUs() {
                                     </span>
                                 </h1>
 
-                                <p className="text-xl lg:text-2xl text-emerald-50/95 leading-relaxed max-w-xl font-light">
+                                <p className="text-xl lg:text-2xl text-emerald-50/95 leading-relaxed max-w-xl font-light animate-fade-in" style={{ animationDelay: '0.2s' }}>
                                     We help forward-thinking businesses achieve their marketing goals through strategic planning, creative excellence, and data-driven execution.
                                 </p>
                             </div>
@@ -261,13 +307,13 @@ export default function AboutUs() {
                                     </div>
                                 </div>
 
-                                <div className="absolute -bottom-8 -right-8 bg-white rounded-2xl shadow-2xl p-6 border border-slate-100 hover:scale-105 transition-transform duration-300">
+                                <div className="absolute -bottom-8 -right-8 bg-white rounded-2xl shadow-2xl p-4 border border-slate-100 hover:scale-105 transition-all duration-300 animate-float glass-effect">
                                     <div className="flex items-center gap-3">
                                         <div className="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center shadow-lg">
                                             <Award className="text-emerald-700" size={26} />
                                         </div>
                                         <div>
-                                            <div className="text-2xl font-extrabold text-slate-900">100%</div>
+                                            <div className="text-2xl font-extrabold text-slate-900 bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent">100%</div>
                                             <div className="text-xs text-slate-600 font-semibold">Repeat Client Rate</div>
                                         </div>
                                     </div>
@@ -278,11 +324,11 @@ export default function AboutUs() {
                 </section>
 
                 {/* ================= MISSION & VISION ================= */}
-                <section className="py-32 bg-gradient-to-b from-white via-slate-50/30 to-white relative overflow-hidden">
-                    {/* Animated Background */}
-                    <div className="absolute inset-0 overflow-hidden">
-                        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-200/20 rounded-full blur-3xl animate-pulse-glow" />
-                        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1.5s' }} />
+                <section className="py-24 bg-gradient-to-b from-white via-slate-50/30 to-white relative overflow-hidden">
+                    {/* Simple Background */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-200/20 rounded-full blur-3xl" />
+                        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl" />
                     </div>
 
                     <div className="container mx-auto px-6 lg:px-24 xl:px-32 relative z-10">
@@ -294,78 +340,66 @@ export default function AboutUs() {
                         />
 
                         {/* Mission & Vision */}
-                        <div className="grid md:grid-cols-2 gap-10">
+                        <div className="grid md:grid-cols-2 gap-8">
                             {/* Mission */}
-                            <div className="relative group" style={{ animationDelay: '0.1s' }}>
-                                {/* Glow Effect */}
-                                <div className="absolute -inset-3 bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 rounded-3xl blur-2xl opacity-0 group-hover:opacity-40 transition-opacity duration-700"></div>
-                                
-                                <div className="relative bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 rounded-3xl p-12 border-2 border-emerald-100 
-                                             hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50 
-                                             transition-all duration-500 hover:-translate-y-3 h-full
-                                             group-hover:scale-[1.02]">
+                            <div className="relative group scroll-reveal">
+                                <div className="relative bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 rounded-2xl p-5 border-2 border-emerald-100 
+                                             hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50 
+                                             transition-all duration-300 hover:-translate-y-1 h-full">
                                     {/* Decorative Elements */}
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100/30 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                                     
                                     {/* Icon with Animation */}
-                                    <div className="mb-8 relative">
-                                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center 
+                                    <div className="mb-4 relative">
+                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center 
                                                      group-hover:from-emerald-200 group-hover:to-emerald-300 
-                                                     group-hover:scale-110 group-hover:rotate-6
-                                                     transition-all duration-500 shadow-xl group-hover:shadow-2xl
-                                                     animate-float" style={{ animationDelay: '0s' }}>
-                                            <div className="absolute inset-0 bg-emerald-300/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all"></div>
-                                            <mission.icon className="text-emerald-700 relative z-10" size={36} strokeWidth={2.5} />
+                                                     group-hover:scale-105
+                                                     transition-all duration-300 shadow-lg">
+                                            <mission.icon className="text-emerald-700 relative z-10" size={24} strokeWidth={2.5} />
                                         </div>
                                     </div>
                                     
-                                    <h3 className="text-3xl lg:text-4xl font-extrabold text-slate-900 mb-6 group-hover:text-emerald-700 transition-colors leading-tight">
+                                    <h3 className="text-xl lg:text-2xl font-extrabold text-slate-900 mb-3 group-hover:text-emerald-700 transition-colors leading-tight">
                                         {mission.title}
                                     </h3>
-                                    <p className="text-slate-700 leading-relaxed text-lg font-light">
+                                    <p className="text-slate-700 leading-relaxed text-sm font-light">
                                         {mission.description}
                                     </p>
                                     
                                     {/* Accent Line */}
-                                    <div className="mt-8 w-16 h-1 bg-gradient-to-r from-emerald-400 to-transparent rounded-full 
-                                                 group-hover:w-24 transition-all duration-500"></div>
+                                    <div className="mt-4 w-12 h-1 bg-gradient-to-r from-emerald-400 to-transparent rounded-full 
+                                                 group-hover:w-20 transition-all duration-300"></div>
                                 </div>
                             </div>
 
                             {/* Vision */}
-                            <div className="relative group" style={{ animationDelay: '0.2s' }}>
-                                {/* Glow Effect */}
-                                <div className="absolute -inset-3 bg-gradient-to-r from-blue-400 via-cyan-500 to-blue-600 rounded-3xl blur-2xl opacity-0 group-hover:opacity-40 transition-opacity duration-700"></div>
-                                
-                                <div className="relative bg-gradient-to-br from-slate-50 via-white to-blue-50/30 rounded-3xl p-12 border-2 border-slate-200 
-                                             hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50 
-                                             transition-all duration-500 hover:-translate-y-3 h-full
-                                             group-hover:scale-[1.02]">
+                            <div className="relative group scroll-reveal">
+                                <div className="relative bg-gradient-to-br from-slate-50 via-white to-blue-50/30 rounded-2xl p-5 border-2 border-slate-200 
+                                             hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50 
+                                             transition-all duration-300 hover:-translate-y-1 h-full">
                                     {/* Decorative Elements */}
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100/30 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                                     
                                     {/* Icon with Animation */}
-                                    <div className="mb-8 relative">
-                                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-200 flex items-center justify-center 
+                                    <div className="mb-4 relative">
+                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-200 flex items-center justify-center 
                                                      group-hover:from-blue-200 group-hover:to-cyan-300 
-                                                     group-hover:scale-110 group-hover:rotate-6
-                                                     transition-all duration-500 shadow-xl group-hover:shadow-2xl
-                                                     animate-float" style={{ animationDelay: '0.2s' }}>
-                                            <div className="absolute inset-0 bg-cyan-300/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all"></div>
-                                            <vision.icon className="text-blue-700 relative z-10" size={36} strokeWidth={2.5} />
+                                                     group-hover:scale-105
+                                                     transition-all duration-300 shadow-lg">
+                                            <vision.icon className="text-blue-700 relative z-10" size={24} strokeWidth={2.5} />
                                         </div>
                                     </div>
                                     
-                                    <h3 className="text-3xl lg:text-4xl font-extrabold text-slate-900 mb-6 group-hover:text-emerald-700 transition-colors leading-tight">
+                                    <h3 className="text-xl lg:text-2xl font-extrabold text-slate-900 mb-3 group-hover:text-emerald-700 transition-colors leading-tight">
                                         {vision.title}
                                     </h3>
-                                    <p className="text-slate-700 leading-relaxed text-lg font-light">
+                                    <p className="text-slate-700 leading-relaxed text-sm font-light">
                                         {vision.description}
                                     </p>
                                     
                                     {/* Accent Line */}
-                                    <div className="mt-8 w-16 h-1 bg-gradient-to-r from-blue-400 to-transparent rounded-full 
-                                                 group-hover:w-24 transition-all duration-500"></div>
+                                    <div className="mt-4 w-12 h-1 bg-gradient-to-r from-blue-400 to-transparent rounded-full 
+                                                 group-hover:w-20 transition-all duration-300"></div>
                                 </div>
                             </div>
                         </div>
@@ -373,7 +407,13 @@ export default function AboutUs() {
                 </section>
 
                 {/* ================= CORE VALUES ================= */}
-                <section className="py-32 bg-gradient-to-b from-slate-50 via-white to-slate-50 relative overflow-hidden">
+                <section className="py-24 bg-gradient-to-b from-slate-50 via-white to-slate-50 relative overflow-hidden">
+                    {/* Simple Background */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-50/30 rounded-full blur-3xl"></div>
+                        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-50/20 rounded-full blur-3xl"></div>
+                    </div>
+                    
                     {/* Background Pattern */}
                     <div className="absolute inset-0 opacity-5" style={{
                         backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%2310b981' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E")`,
@@ -417,32 +457,28 @@ export default function AboutUs() {
                                         {/* Glow Effect */}
                                         <div className={`absolute -inset-2 bg-gradient-to-r ${iconGradients[index]} rounded-3xl blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-500`}></div>
                                         
-                                        <div className={`relative bg-gradient-to-br ${gradients[index]} rounded-3xl p-10 border-2 border-slate-200
-                                                     hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50
-                                                     transition-all duration-500 hover:-translate-y-3 h-full
-                                                     group-hover:scale-[1.03]`}>
+                                        <div className={`relative bg-gradient-to-br ${gradients[index]} rounded-2xl p-5 border-2 border-slate-200
+                                                     hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50
+                                                     transition-all duration-300 hover:-translate-y-1 h-full scroll-reveal`}>
                                             {/* Icon with Enhanced Animation */}
-                                            <div className="mb-6 relative">
-                                                <div className={`w-18 h-18 rounded-2xl bg-gradient-to-br ${iconGradients[index]} flex items-center justify-center 
-                                                             group-hover:scale-110 group-hover:rotate-12
-                                                             transition-all duration-500 shadow-xl group-hover:shadow-2xl
-                                                             animate-float`}
-                                                    style={{ animationDelay: `${index * 0.2}s` }}>
-                                                    <div className={`absolute inset-0 bg-gradient-to-br ${iconGradients[index]} rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity`}></div>
-                                                    <value.icon className={`${iconColors[index]} relative z-10`} size={32} strokeWidth={2.5} />
+                                            <div className="mb-4 relative">
+                                                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${iconGradients[index]} flex items-center justify-center 
+                                                             group-hover:scale-105
+                                                             transition-all duration-300 shadow-lg`}>
+                                                    <value.icon className={`${iconColors[index]} relative z-10`} size={22} strokeWidth={2.5} />
                                                 </div>
                                             </div>
                                             
-                                            <h3 className="text-xl lg:text-2xl font-extrabold text-slate-900 mb-4 group-hover:text-emerald-700 transition-colors leading-tight">
+                                            <h3 className="text-base lg:text-lg font-extrabold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors leading-tight">
                                                 {value.title}
                                             </h3>
-                                            <p className="text-slate-600 leading-relaxed text-base font-light">
+                                            <p className="text-slate-600 leading-relaxed text-xs font-light">
                                                 {value.description}
                                             </p>
                                             
                                             {/* Decorative Accent */}
-                                            <div className={`mt-6 w-12 h-1 bg-gradient-to-r ${iconGradients[index]} rounded-full 
-                                                         group-hover:w-20 transition-all duration-500`}></div>
+                                            <div className={`mt-4 w-10 h-1 bg-gradient-to-r ${iconGradients[index]} rounded-full 
+                                                         group-hover:w-16 transition-all duration-300`}></div>
                                         </div>
                                     </div>
                                 );
@@ -452,11 +488,11 @@ export default function AboutUs() {
                 </section>
 
                 {/* ================= AGENCY TIMELINE ================= */}
-                <section className="py-32 bg-gradient-to-b from-white via-emerald-50/20 to-white relative overflow-hidden">
-                    {/* Animated Background */}
-                    <div className="absolute inset-0 overflow-hidden">
-                        <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-emerald-200/15 rounded-full blur-3xl animate-pulse-glow" />
-                        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-200/15 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '2s' }} />
+                <section className="py-24 bg-gradient-to-b from-white via-emerald-50/20 to-white relative overflow-hidden">
+                    {/* Simple Background */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-emerald-200/15 rounded-full blur-3xl" />
+                        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-200/15 rounded-full blur-3xl" />
                     </div>
 
                     <div className="container mx-auto px-6 lg:px-24 xl:px-32 relative z-10">
@@ -496,35 +532,34 @@ export default function AboutUs() {
                                                     {/* Glow Effect */}
                                                     <div className={`absolute -inset-2 bg-gradient-to-r ${colors[index]} rounded-3xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500`}></div>
                                                     
-                                                    <div className="relative bg-white rounded-3xl p-10 border-2 border-slate-200 
-                                                                 hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50 
-                                                                 transition-all duration-700 hover:-translate-y-3
-                                                                 group-hover:scale-[1.02]">
+                                                    <div className="relative bg-white rounded-2xl p-5 border-2 border-slate-200 
+                                                                 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50 
+                                                                 transition-all duration-300 hover:-translate-y-1 scroll-reveal">
                                                         {/* Year Badge with Animation */}
-                                                        <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-emerald-50 to-emerald-100 
-                                                                     text-emerald-700 rounded-full text-sm font-bold mb-6 
+                                                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-emerald-50 to-emerald-100 
+                                                                     text-emerald-700 rounded-full text-xs font-bold mb-4 
                                                                      border-2 border-emerald-200 group-hover:border-emerald-300
-                                                                     group-hover:scale-110 transition-all duration-500 shadow-md group-hover:shadow-lg">
-                                                            <Calendar size={16} className="shrink-0" />
+                                                                     group-hover:scale-105 transition-all duration-300 shadow-md">
+                                                            <Calendar size={14} className="shrink-0" />
                                                             <span>{milestone.year}</span>
                                                         </div>
                                                         
-                                                        <h3 className="text-2xl lg:text-3xl font-extrabold text-slate-900 mb-4 group-hover:text-emerald-700 transition-colors leading-tight">
+                                                        <h3 className="text-lg lg:text-xl font-extrabold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors leading-tight">
                                                             {milestone.title}
                                                         </h3>
-                                                        <p className="text-slate-600 mb-6 leading-relaxed text-base font-light">
+                                                        <p className="text-slate-600 mb-4 leading-relaxed text-sm font-light">
                                                             {milestone.description}
                                                         </p>
                                                         
                                                         {/* Achievement Badge */}
-                                                        <div className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-emerald-50 to-teal-50 
+                                                        <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 
                                                                      rounded-xl border border-emerald-100 group-hover:border-emerald-200
                                                                      group-hover:shadow-md transition-all duration-300">
-                                                            <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center 
-                                                                         group-hover:bg-emerald-200 group-hover:scale-110 transition-all duration-300">
-                                                                <CheckCircle2 className="text-emerald-600" size={18} />
+                                                            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center 
+                                                                         group-hover:bg-emerald-200 group-hover:scale-105 transition-all duration-300">
+                                                                <CheckCircle2 className="text-emerald-600" size={16} />
                                                             </div>
-                                                            <span className="text-emerald-700 font-bold text-sm">{milestone.achievement}</span>
+                                                            <span className="text-emerald-700 font-bold text-xs">{milestone.achievement}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -538,9 +573,9 @@ export default function AboutUs() {
                 </section>
 
                 {/* ================= OUR TEAM ================= */}
-                <section className="py-32 bg-gradient-to-b from-slate-50 via-white to-slate-50 relative overflow-hidden">
-                    {/* Background Elements */}
-                    <div className="absolute inset-0 overflow-hidden">
+                <section className="py-24 bg-gradient-to-b from-slate-50 via-white to-slate-50 relative overflow-hidden">
+                    {/* Simple Background */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         <div className="absolute top-1/4 right-0 w-96 h-96 bg-emerald-100/20 rounded-full blur-3xl"></div>
                         <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-blue-100/20 rounded-full blur-3xl"></div>
                     </div>
@@ -563,61 +598,57 @@ export default function AboutUs() {
                                     {/* Glow Effect */}
                                     <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-3xl blur-xl opacity-0 group-hover:opacity-40 transition-opacity duration-500"></div>
                                     
-                                    <div className="relative bg-white rounded-3xl overflow-hidden border-2 border-slate-200
-                                                 hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50
-                                                 transition-all duration-500 hover:-translate-y-3
-                                                 group-hover:scale-[1.02]">
+                                    <div className="relative bg-white rounded-2xl overflow-hidden border-2 border-slate-200
+                                                 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50
+                                                 transition-all duration-300 hover:-translate-y-1 scroll-reveal">
                                         {/* Image Section with Enhanced Effects */}
-                                        <div className="relative h-80 overflow-hidden">
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent z-10 
-                                                          group-hover:from-black/90 transition-all duration-700"></div>
-                                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 to-emerald-500/0 
-                                                          group-hover:from-emerald-500/20 group-hover:to-emerald-500/10 
-                                                          transition-all duration-700 z-10"></div>
+                                        <div className="relative h-64 overflow-hidden">
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent z-10 
+                                                          group-hover:from-black/80 transition-all duration-300"></div>
                                             <img
                                                 src={member.image}
                                                 alt={member.name}
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                             />
                                             
                                             {/* Floating Icon Badge */}
-                                            <div className="absolute top-6 right-6 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                                                <div className="w-14 h-14 rounded-xl bg-white/90 backdrop-blur-md flex items-center justify-center 
-                                                             shadow-xl group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
-                                                    <Award className="text-emerald-600" size={24} />
+                                            <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                                <div className="w-10 h-10 rounded-xl bg-white/90 backdrop-blur-md flex items-center justify-center 
+                                                             shadow-lg group-hover:scale-105 transition-all duration-300">
+                                                    <Award className="text-emerald-600" size={18} />
                                                 </div>
                                             </div>
                                         </div>
                                         
                                         {/* Content Section */}
-                                        <div className="p-10">
-                                            <div className="flex items-start justify-between mb-4">
+                                        <div className="p-5">
+                                            <div className="flex items-start justify-between mb-3">
                                                 <div>
-                                                    <h3 className="text-2xl font-extrabold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors leading-tight">
+                                                    <h3 className="text-lg font-extrabold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors leading-tight">
                                                         {member.name}
                                                     </h3>
-                                                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-50 text-emerald-700 
+                                                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 
                                                                  rounded-full text-xs font-bold border border-emerald-100
                                                                  group-hover:bg-emerald-100 group-hover:scale-105 transition-all duration-300">
-                                                        <Briefcase size={12} />
+                                                        <Briefcase size={11} />
                                                         <span>{member.role}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                             
-                                            <p className="text-slate-600 text-base leading-relaxed font-light mb-6">
+                                            <p className="text-slate-600 text-xs leading-relaxed font-light mb-4">
                                                 {member.bio}
                                             </p>
                                             
                                             {/* Social/Contact Icons Placeholder */}
-                                            <div className="flex items-center gap-3 pt-6 border-t border-slate-100 group-hover:border-emerald-100 transition-colors">
-                                                <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center 
-                                                             group-hover:bg-emerald-100 group-hover:scale-110 transition-all duration-300">
-                                                    <Users className="text-emerald-600" size={18} />
+                                            <div className="flex items-center gap-2 pt-4 border-t border-slate-100 group-hover:border-emerald-100 transition-colors">
+                                                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center 
+                                                             group-hover:bg-emerald-100 group-hover:scale-105 transition-all duration-300">
+                                                    <Users className="text-emerald-600" size={16} />
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="text-xs text-slate-500 font-semibold">Team Member</div>
-                                                    <div className="text-sm text-emerald-600 font-bold">Expert Professional</div>
+                                                    <div className="text-xs text-emerald-600 font-bold">Expert Professional</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -645,11 +676,11 @@ export default function AboutUs() {
                 </section>
 
                 {/* ================= HOW WE ARE DIFFERENT ================= */}
-                <section className="py-32 bg-gradient-to-b from-white via-emerald-50/30 to-white relative overflow-hidden">
-                    {/* Animated Background */}
-                    <div className="absolute inset-0 overflow-hidden">
-                        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-200/20 rounded-full blur-3xl animate-pulse-glow" />
-                        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1s' }} />
+                <section className="py-24 bg-gradient-to-b from-white via-emerald-50/30 to-white relative overflow-hidden">
+                    {/* Simple Background */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-200/20 rounded-full blur-3xl" />
+                        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl" />
                     </div>
 
                     <div className="container mx-auto px-6 lg:px-24 xl:px-32 relative z-10">
@@ -687,32 +718,28 @@ export default function AboutUs() {
                                         {/* Glow Effect */}
                                         <div className={`absolute -inset-3 bg-gradient-to-r ${iconGradients[index]} rounded-3xl blur-2xl opacity-0 group-hover:opacity-40 transition-opacity duration-500`}></div>
                                         
-                                        <div className={`relative bg-gradient-to-br ${gradients[index]} rounded-3xl p-10 border-2 border-slate-200
-                                                     hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50
-                                                     transition-all duration-500 hover:-translate-y-3 h-full
-                                                     group-hover:scale-[1.02]`}>
+                                        <div className={`relative bg-gradient-to-br ${gradients[index]} rounded-2xl p-5 border-2 border-slate-200
+                                                     hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50
+                                                     transition-all duration-300 hover:-translate-y-1 h-full scroll-reveal`}>
                                             {/* Enhanced Icon */}
-                                            <div className="mb-8 relative">
-                                                <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${iconGradients[index]} flex items-center justify-center 
-                                                             group-hover:scale-110 group-hover:rotate-12
-                                                             transition-all duration-500 shadow-xl group-hover:shadow-2xl
-                                                             animate-float`}
-                                                    style={{ animationDelay: `${index * 0.2}s` }}>
-                                                    <div className={`absolute inset-0 bg-gradient-to-br ${iconGradients[index]} rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity`}></div>
-                                                    <item.icon className={`${iconColors[index]} relative z-10`} size={36} strokeWidth={2.5} />
+                                            <div className="mb-4 relative">
+                                                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${iconGradients[index]} flex items-center justify-center 
+                                                             group-hover:scale-105
+                                                             transition-all duration-300 shadow-lg`}>
+                                                    <item.icon className={`${iconColors[index]} relative z-10`} size={22} strokeWidth={2.5} />
                                                 </div>
                                             </div>
                                             
-                                            <h3 className="text-2xl lg:text-3xl font-extrabold text-slate-900 mb-5 group-hover:text-emerald-700 transition-colors leading-tight">
+                                            <h3 className="text-base lg:text-lg font-extrabold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors leading-tight">
                                                 {item.title}
                                             </h3>
-                                            <p className="text-slate-600 leading-relaxed text-base font-light mb-6">
+                                            <p className="text-slate-600 leading-relaxed text-xs font-light">
                                                 {item.description}
                                             </p>
                                             
                                             {/* Decorative Accent */}
-                                            <div className={`w-16 h-1 bg-gradient-to-r ${iconGradients[index]} rounded-full 
-                                                         group-hover:w-24 transition-all duration-500`}></div>
+                                            <div className={`mt-4 w-10 h-1 bg-gradient-to-r ${iconGradients[index]} rounded-full 
+                                                         group-hover:w-16 transition-all duration-300`}></div>
                                             
                                             {/* Floating Badge */}
                                             <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
@@ -730,33 +757,39 @@ export default function AboutUs() {
                 </section>
 
                 {/* ================= SOFT CTA ================= */}
-                <section className="py-24 bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-600 relative overflow-hidden">
+                <section className="py-20 bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-600 relative overflow-hidden">
                     <PatternBg />
+                    
+                    {/* Simple Background Gradient */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+                        <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-300/10 rounded-full blur-3xl"></div>
+                    </div>
 
                     <div className="container mx-auto px-6 lg:px-24 xl:px-32 relative z-10">
-                        <div className="max-w-4xl mx-auto">
-                            <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-12 border border-white/20 text-center">
-                                <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-md rounded-full text-white text-sm font-semibold border border-white/30 shadow-lg hover:bg-white/25 transition-all duration-300 mb-6">
+                        <div className="max-w-4xl mx-auto scroll-reveal">
+                            <div className="glass-effect rounded-2xl p-6 border border-white/20 text-center">
+                                <div className="inline-flex items-center gap-2 px-5 py-2.5 glass-effect rounded-full text-white text-sm font-semibold shadow-xl hover:bg-white/30 hover:scale-105 transition-all duration-300 mb-6 animate-fade-in">
                                     <Handshake size={16} className="shrink-0" />
                                     <span>Let's Connect</span>
                                 </div>
-                                <h2 className="text-3xl lg:text-4xl xl:text-5xl font-extrabold text-white mb-4 leading-tight">
+                                <h2 className="text-3xl lg:text-4xl xl:text-5xl font-extrabold text-white mb-4 leading-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>
                                     Ready to Start Your Journey?
                                 </h2>
-                                <p className="text-xl text-emerald-50/95 mb-8 leading-relaxed max-w-2xl mx-auto font-light">
+                                <p className="text-lg lg:text-xl text-emerald-50/95 mb-6 leading-relaxed max-w-2xl mx-auto font-light animate-fade-in" style={{ animationDelay: '0.2s' }}>
                                     We'd love to learn about your business and explore how we can help you achieve your marketing goals. 
                                     Let's have a conversation about your vision and how we can bring it to life together.
                                 </p>
-                                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{ animationDelay: '0.3s' }}>
                                     <Link
                                         to="/contact"
-                                        className="group inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-emerald-700 rounded-2xl font-bold text-base
-                                                 shadow-2xl hover:shadow-emerald-200/50 transition-all duration-300 hover:scale-[1.03] hover:-translate-y-0.5
+                                        className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-emerald-700 rounded-xl font-bold text-sm
+                                                 shadow-2xl hover:shadow-emerald-200/50 transition-all duration-300 hover:scale-105
                                                  border-2 border-transparent hover:border-emerald-100"
                                     >
-                                        <Mail size={20} className="shrink-0" />
+                                        <Mail size={18} className="shrink-0" />
                                         <span className="leading-none">Get In Touch</span>
-                                        <ArrowRight size={20} className="shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
+                                        <ArrowRight size={18} className="shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
                                     </Link>
                                     <Link
                                         to="/projects"
@@ -764,13 +797,13 @@ export default function AboutUs() {
                                             // Scroll to top when navigating to projects page
                                             setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                                         }}
-                                        className="group inline-flex items-center justify-center gap-3 px-10 py-5 bg-white/10 backdrop-blur-md text-white rounded-2xl font-bold text-base
-                                                 border-2 border-white/40 hover:bg-white/25 hover:border-white/60 transition-all duration-300 hover:scale-[1.03] hover:-translate-y-0.5
+                                        className="group inline-flex items-center justify-center gap-3 px-8 py-4 glass-effect text-white rounded-xl font-bold text-sm
+                                                 border-2 border-white/40 hover:bg-white/25 hover:border-white/60 transition-all duration-300 hover:scale-105
                                                  shadow-lg hover:shadow-xl"
                                     >
-                                        <Briefcase size={20} className="shrink-0" />
+                                        <Briefcase size={18} className="shrink-0" />
                                         <span className="leading-none">View Our Work</span>
-                                        <ArrowRight size={20} className="shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
+                                        <ArrowRight size={18} className="shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
                                     </Link>
                                 </div>
                             </div>

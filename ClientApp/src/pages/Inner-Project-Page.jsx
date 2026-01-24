@@ -99,8 +99,8 @@ export default function InnerProjectPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50">
         <div className="container mx-auto px-6 lg:px-24 xl:px-32 py-24">
-          <div className="bg-white rounded-3xl border border-slate-200 p-10 text-center shadow-xl">
-            <h1 className="text-3xl font-extrabold text-slate-900 mb-3">Project not found</h1>
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center shadow-xl">
+            <h1 className="text-2xl font-extrabold text-slate-900 mb-3">Project not found</h1>
             <p className="text-slate-600 mb-8 font-light">This project doesn't exist or the link is incorrect.</p>
             <Link
               to="/projects"
@@ -229,8 +229,8 @@ export default function InnerProjectPage() {
 
                     <div className="relative">
                       <div className="absolute -inset-1 bg-gradient-to-r from-emerald-300 to-emerald-600 rounded-3xl blur-2xl opacity-15" />
-                      <div className="relative bg-gradient-to-br from-slate-50 to-white rounded-3xl p-8 lg:p-10 border border-slate-200 shadow-xl">
-                        <p className="text-lg lg:text-xl text-slate-700 leading-relaxed font-light">
+                      <div className="relative bg-gradient-to-br from-slate-50 to-white rounded-2xl p-5 border border-slate-200 shadow-xl">
+                        <p className="text-base text-slate-700 leading-relaxed font-light">
                           {project.description}
                         </p>
                       </div>
@@ -239,28 +239,28 @@ export default function InnerProjectPage() {
 
                   {/* KEY OBJECTIVES */}
                   <div className="animate-slide-up" style={{ animationDelay: "0.2s" }}>
-                    <div className="bg-white rounded-3xl p-8 lg:p-10 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow duration-300">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center shadow-md">
-                          <Target className="text-emerald-700" size={22} />
+                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow duration-300">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center shadow-md">
+                          <Target className="text-emerald-700" size={20} />
                         </div>
-                        <h3 className="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">Key Objectives</h3>
+                        <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">Key Objectives</h3>
                       </div>
 
-                      <ul className="space-y-4">
+                      <ul className="space-y-3">
                         {(objectives.length > 0
                           ? objectives
                           : ["Increase brand awareness", "Improve engagement", "Drive conversions", "Strengthen trust", "Expand market reach", "Enhance user experience"]
                         ).map((item, i) => (
                           <li
                             key={i}
-                            className="flex items-start gap-4 group animate-slide-up"
+                            className="flex items-start gap-3 group animate-slide-up"
                             style={{ animationDelay: `${0.3 + i * 0.1}s` }}
                           >
-                            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 group-hover:scale-110 transition-all duration-300 mt-0.5">
-                              <CheckCircle2 className="text-emerald-600" size={18} />
+                            <div className="w-6 h-6 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 group-hover:scale-110 transition-all duration-300 mt-0.5">
+                              <CheckCircle2 className="text-emerald-600" size={14} />
                             </div>
-                            <span className="text-lg text-slate-700 font-medium pt-1 group-hover:text-emerald-700 transition-colors">
+                            <span className="text-sm text-slate-700 font-medium pt-0.5 group-hover:text-emerald-700 transition-colors">
                               {item}
                             </span>
                           </li>
@@ -271,25 +271,25 @@ export default function InnerProjectPage() {
 
                   {/* WHAT WE DELIVERED */}
                   <div className="animate-slide-up" style={{ animationDelay: "0.4s" }}>
-                    <div className="bg-gradient-to-br from-emerald-50 to-white rounded-3xl p-8 lg:p-10 border border-emerald-100 shadow-lg hover:shadow-xl transition-shadow duration-300">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-200 to-emerald-300 flex items-center justify-center shadow-md">
-                          <Briefcase className="text-emerald-700" size={22} />
+                    <div className="bg-gradient-to-br from-emerald-50 to-white rounded-2xl p-5 border border-emerald-100 shadow-lg hover:shadow-xl transition-shadow duration-300">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-200 to-emerald-300 flex items-center justify-center shadow-md">
+                          <Briefcase className="text-emerald-700" size={20} />
                         </div>
-                        <h3 className="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">What We Delivered</h3>
+                        <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">What We Delivered</h3>
                       </div>
 
-                      <ul className="space-y-4">
+                      <ul className="space-y-3">
                         {(project.services || []).slice(0, 8).map((s, i) => (
                           <li
                             key={i}
-                            className="flex items-start gap-4 group animate-slide-up"
+                            className="flex items-start gap-3 group animate-slide-up"
                             style={{ animationDelay: `${0.5 + i * 0.1}s` }}
                           >
-                            <div className="w-8 h-8 rounded-lg bg-white border-2 border-emerald-200 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 group-hover:border-emerald-300 group-hover:scale-110 transition-all duration-300 mt-0.5">
-                              <Rocket className="text-emerald-600" size={16} />
+                            <div className="w-6 h-6 rounded-lg bg-white border-2 border-emerald-200 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 group-hover:border-emerald-300 group-hover:scale-110 transition-all duration-300 mt-0.5">
+                              <Rocket className="text-emerald-600" size={14} />
                             </div>
-                            <span className="text-lg text-slate-700 font-medium pt-1 group-hover:text-emerald-700 transition-colors">
+                            <span className="text-sm text-slate-700 font-medium pt-0.5 group-hover:text-emerald-700 transition-colors">
                               {s}
                             </span>
                           </li>
@@ -308,24 +308,24 @@ export default function InnerProjectPage() {
                 {/* RIGHT COLUMN - SIDEBAR */}
                 <div className="space-y-6 lg:sticky lg:top-32 h-fit">
                   {/* PROJECT DETAILS CARD */}
-                  <div className="bg-gradient-to-br from-slate-50 to-white rounded-3xl p-8 border border-slate-200 shadow-lg animate-fade-in-right">
-                    <div className="flex items-center gap-3 mb-6">
+                  <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-5 border border-slate-200 shadow-lg animate-fade-in-right">
+                    <div className="flex items-center gap-3 mb-4">
                       <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
                         <BarChart3 className="text-emerald-600" size={20} />
                       </div>
-                      <h3 className="text-2xl font-extrabold text-slate-900">Project Details</h3>
+                      <h3 className="text-xl font-extrabold text-slate-900">Project Details</h3>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       {/* Year */}
                       <div className="group">
                         <div className="flex items-center gap-3 mb-2">
-                          <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center group-hover:bg-emerald-50 group-hover:border-emerald-200 transition-all duration-300">
-                            <Calendar className="text-emerald-600" size={18} />
+                          <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center group-hover:bg-emerald-50 group-hover:border-emerald-200 transition-all duration-300">
+                            <Calendar className="text-emerald-600" size={16} />
                           </div>
                           <div>
                             <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Year</div>
-                            <div className="text-lg font-extrabold text-slate-900">{project.year}</div>
+                            <div className="text-base font-extrabold text-slate-900">{project.year}</div>
                           </div>
                         </div>
                       </div>
@@ -333,12 +333,12 @@ export default function InnerProjectPage() {
                       {/* Location */}
                       <div className="group">
                         <div className="flex items-center gap-3 mb-2">
-                          <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center group-hover:bg-emerald-50 group-hover:border-emerald-200 transition-all duration-300">
-                            <MapPin className="text-emerald-600" size={18} />
+                          <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center group-hover:bg-emerald-50 group-hover:border-emerald-200 transition-all duration-300">
+                            <MapPin className="text-emerald-600" size={16} />
                           </div>
                           <div>
                             <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Location</div>
-                            <div className="text-lg font-extrabold text-slate-900">{project.location}</div>
+                            <div className="text-base font-extrabold text-slate-900">{project.location}</div>
                           </div>
                         </div>
                       </div>
@@ -347,12 +347,12 @@ export default function InnerProjectPage() {
                       {project.duration && (
                         <div className="group">
                           <div className="flex items-center gap-3 mb-2">
-                            <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center group-hover:bg-emerald-50 group-hover:border-emerald-200 transition-all duration-300">
-                              <Clock className="text-emerald-600" size={18} />
+                            <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center group-hover:bg-emerald-50 group-hover:border-emerald-200 transition-all duration-300">
+                              <Clock className="text-emerald-600" size={16} />
                             </div>
                             <div>
                               <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Duration</div>
-                              <div className="text-lg font-extrabold text-slate-900">{project.duration}</div>
+                              <div className="text-base font-extrabold text-slate-900">{project.duration}</div>
                             </div>
                           </div>
                         </div>
@@ -361,12 +361,12 @@ export default function InnerProjectPage() {
                       {/* Users/Platform Usage */}
                       <div className="group pt-4 border-t border-slate-200">
                         <div className="flex items-center gap-3 mb-2">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-200 border-2 border-emerald-200 flex items-center justify-center group-hover:from-emerald-200 group-hover:to-emerald-300 group-hover:scale-110 transition-all duration-300 shadow-md">
-                            <Users className="text-emerald-700" size={18} />
+                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-200 border-2 border-emerald-200 flex items-center justify-center group-hover:from-emerald-200 group-hover:to-emerald-300 group-hover:scale-110 transition-all duration-300 shadow-md">
+                            <Users className="text-emerald-700" size={16} />
                           </div>
                           <div>
                             <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Platform Users</div>
-                            <div className="text-2xl font-extrabold text-emerald-600">{userCount}</div>
+                            <div className="text-xl font-extrabold text-emerald-600">{userCount}</div>
                             <div className="text-xs text-slate-600 font-medium mt-1">Active users</div>
                           </div>
                         </div>
@@ -375,18 +375,18 @@ export default function InnerProjectPage() {
                       {/* Client */}
                       <div className="pt-4 border-t border-slate-200">
                         <div className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-2">Client</div>
-                        <div className="text-lg font-bold text-slate-900">{project.client}</div>
+                        <div className="text-base font-bold text-slate-900">{project.client}</div>
                       </div>
                     </div>
                   </div>
 
                   {/* CTA CARD */}
-                  <div className="bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-3xl p-8 text-white shadow-xl animate-fade-in-right" style={{ animationDelay: "0.3s" }}>
+                  <div className="bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-2xl p-5 text-white shadow-xl animate-fade-in-right" style={{ animationDelay: "0.3s" }}>
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                        <Sparkles className="text-white" size={22} />
+                      <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                        <Sparkles className="text-white" size={20} />
                       </div>
-                      <div className="font-extrabold text-xl">Want Similar Results?</div>
+                      <div className="font-extrabold text-lg">Want Similar Results?</div>
                     </div>
                     <p className="text-emerald-50 text-sm mb-6 font-light leading-relaxed">
                       Let's plan a strategy tailored to your business goals and drive exceptional outcomes.

@@ -140,5 +140,17 @@ namespace WP25G20.Controllers.Api
             if (!result) return NotFound();
             return Ok(new { message = "Invoice marked as sent" });
         }
+
+        [HttpPost("ensure-campaign-invoices")]
+        [Authorize(Roles = "Admin,Client")]
+        public async Task<ActionResult<IEnumerable<InvoiceDTO>>> EnsureInvoicesForCampaigns()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var isAdmin = User.IsInRole("Admin");
+            var invoices = await _invoiceService.EnsureInvoicesForCampaignsAsync(userId, isAdmin);
+            return Ok(invoices);
+        }
     }
 }

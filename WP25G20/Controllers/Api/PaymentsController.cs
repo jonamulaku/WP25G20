@@ -74,7 +74,7 @@ namespace WP25G20.Controllers.Api
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Client")]
         public async Task<ActionResult<PaymentDTO>> Create([FromBody] PaymentCreateDTO dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

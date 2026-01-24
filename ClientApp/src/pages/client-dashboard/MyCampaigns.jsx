@@ -39,8 +39,9 @@ export default function MyCampaigns() {
 
     const filteredCampaigns = campaigns
         .filter(campaign => {
-            const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                campaign.type.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = campaign.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                campaign.serviceName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                campaign.description?.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
             return matchesSearch && matchesStatus;
         })
@@ -182,7 +183,10 @@ export default function MyCampaigns() {
                                     onClick={() => openModal(campaign)}
                                 >
                                     <td className="px-6 py-4">
-                                        <span className="text-white font-medium">Package: {campaign.serviceName || campaign.type || "N/A"}</span>
+                                        <div>
+                                            <span className="text-white font-medium">{campaign.name || "Unnamed Campaign"}</span>
+                                            <p className="text-slate-400 text-xs mt-1">Service: {campaign.serviceName || "N/A"}</p>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(campaign.status)}`}>
@@ -263,31 +267,31 @@ export default function MyCampaigns() {
                                     </div>
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-semibold text-slate-400 mb-2">Spent So Far</h3>
+                                    <h3 className="text-sm font-semibold text-slate-400 mb-2">Service</h3>
                                     <div className="flex items-center gap-2">
                                         <TrendingUp size={18} className="text-amber-400" />
-                                        <span className="text-2xl font-bold text-white">${((selectedCampaign.spent || 0)).toLocaleString()}</span>
+                                        <span className="text-xl font-bold text-white">{selectedCampaign.serviceName || "N/A"}</span>
                                     </div>
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-semibold text-slate-400 mb-2">Remaining Budget</h3>
+                                    <h3 className="text-sm font-semibold text-slate-400 mb-2">Tasks</h3>
                                     <div className="flex items-center gap-2">
                                         <DollarSign size={18} className="text-blue-400" />
-                                        <span className="text-2xl font-bold text-white">${((selectedCampaign.budget || 0) - (selectedCampaign.spent || 0)).toLocaleString()}</span>
+                                        <span className="text-xl font-bold text-white">{selectedCampaign.taskCount || 0} total, {selectedCampaign.completedTaskCount || 0} completed</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {selectedCampaign.budget > 0 && (
+                            {selectedCampaign.taskCount > 0 && (
                                 <div className="pt-4 border-t border-slate-700/50">
                                     <div className="w-full bg-slate-700/50 rounded-full h-3 mb-2">
                                         <div
                                             className="h-3 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
-                                            style={{ width: `${((selectedCampaign.spent || 0) / selectedCampaign.budget) * 100}%` }}
+                                            style={{ width: `${((selectedCampaign.completedTaskCount || 0) / selectedCampaign.taskCount) * 100}%` }}
                                         />
                                     </div>
                                     <p className="text-sm text-slate-400 text-center">
-                                        {(((selectedCampaign.spent || 0) / selectedCampaign.budget) * 100).toFixed(1)}% of budget used
+                                        {(((selectedCampaign.completedTaskCount || 0) / selectedCampaign.taskCount) * 100).toFixed(1)}% of tasks completed
                                     </p>
                                 </div>
                             )}

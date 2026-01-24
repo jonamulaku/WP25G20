@@ -245,8 +245,21 @@ export const clientsAPI = {
         return normalizeDTO(response);
     },
     
+    getMe: async () => {
+        const response = await apiCall('/clients/me');
+        return normalizeDTO(response);
+    },
+    
     update: async (id, data) => {
         const response = await apiCall(`/clients/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    updateMe: async (data) => {
+        const response = await apiCall('/clients/me', {
             method: 'PUT',
             body: JSON.stringify(data),
         });
@@ -431,6 +444,14 @@ export const usersAPI = {
         return normalizeDTO(response);
     },
     
+    updateMe: async (dto) => {
+        const response = await apiCall('/users/me', {
+            method: 'PUT',
+            body: JSON.stringify(dto),
+        });
+        return normalizeDTO(response);
+    },
+    
     update: async (id, dto) => {
         const response = await apiCall(`/users/${id}`, {
             method: 'PUT',
@@ -533,6 +554,15 @@ export const invoicesAPI = {
             method: 'DELETE',
         });
     },
+    
+    ensureCampaignInvoices: async () => {
+        const response = await apiCall('/invoices/ensure-campaign-invoices', {
+            method: 'POST',
+        });
+        return {
+            items: response.map(normalizeDTO) || []
+        };
+    },
 };
 
 // Payments API
@@ -629,6 +659,46 @@ export const activityLogsAPI = {
             console.warn('Activity logs endpoint not available:', error);
             return { items: [] };
         }
+    },
+};
+
+// Approval Requests API
+export const approvalsAPI = {
+    getAll: async (filter = {}) => {
+        const params = new URLSearchParams();
+        if (filter.searchTerm) params.append('searchTerm', filter.searchTerm);
+        if (filter.pageNumber) params.append('pageNumber', filter.pageNumber);
+        if (filter.pageSize) params.append('pageSize', filter.pageSize);
+        if (filter.sortBy) params.append('sortBy', filter.sortBy);
+        if (filter.sortDescending) params.append('sortDescending', filter.sortDescending);
+        if (filter.status) params.append('filters[Status]', filter.status);
+        
+        const response = await apiCall(`/approvalrequests?${params.toString()}`);
+        return {
+            ...response,
+            items: response.items?.map(normalizeDTO) || response.Items?.map(normalizeDTO) || []
+        };
+    },
+    
+    getById: async (id) => {
+        const response = await apiCall(`/approvalrequests/${id}`);
+        return normalizeDTO(response);
+    },
+    
+    create: async (data) => {
+        const response = await apiCall('/approvalrequests', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        return normalizeDTO(response);
+    },
+    
+    processApproval: async (id, action, comment) => {
+        const response = await apiCall(`/approvalrequests/${id}/process`, {
+            method: 'POST',
+            body: JSON.stringify({ action, comment }),
+        });
+        return normalizeDTO(response);
     },
 };
 

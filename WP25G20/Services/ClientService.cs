@@ -109,14 +109,43 @@ namespace WP25G20.Services
             // Apply permission filtering (if userId provided and not admin, filter to only show user's own clients)
             if (!string.IsNullOrEmpty(userId) && (isAdmin == null || !isAdmin.Value))
             {
-                // For non-admin users, only show clients they created
-                // Users without Client entities (Id = 0) don't have a CreatedById, so exclude them
-                var userCreatedClientIds = allClients
-                    .Where(c => c.CreatedById == userId)
-                    .Select(c => c.Id)
-                    .ToHashSet();
+                // For non-admin users, show clients they created OR clients where email matches their email
+                var user = await _userManager.FindByIdAsync(userId);
+                var userEmail = user?.Email?.ToLower();
                 
-                allClientDTOs = allClientDTOs.Where(c => c.Id != 0 && userCreatedClientIds.Contains(c.Id)).ToList();
+                if (!string.IsNullOrEmpty(userEmail))
+                {
+                    // Filter to show clients where:
+                    // 1. Client was created by this user, OR
+                    // 2. Client's email matches the user's email (for clients updating their own profile)
+                    var userCreatedClientIds = allClients
+                        .Where(c => c.CreatedById == userId)
+                        .Select(c => c.Id)
+                        .ToHashSet();
+                    
+                    var emailMatchedClientIds = allClients
+                        .Where(c => !string.IsNullOrEmpty(c.Email) && c.Email.ToLower() == userEmail)
+                        .Select(c => c.Id)
+                        .ToHashSet();
+                    
+                    var allowedClientIds = userCreatedClientIds.Union(emailMatchedClientIds).ToHashSet();
+                    
+                    // Filter ClientDTOs: show if they match by ID or by email
+                    allClientDTOs = allClientDTOs.Where(c => 
+                        (c.Id != 0 && allowedClientIds.Contains(c.Id)) || // Has entity and matches by ID
+                        (!string.IsNullOrEmpty(c.Email) && c.Email.ToLower() == userEmail) // Matches by email (including Id=0 cases)
+                    ).ToList();
+                }
+                else
+                {
+                    // Fallback: only show clients they created
+                    var userCreatedClientIds = allClients
+                        .Where(c => c.CreatedById == userId)
+                        .Select(c => c.Id)
+                        .ToHashSet();
+                    
+                    allClientDTOs = allClientDTOs.Where(c => c.Id != 0 && userCreatedClientIds.Contains(c.Id)).ToList();
+                }
             }
 
             // Apply search

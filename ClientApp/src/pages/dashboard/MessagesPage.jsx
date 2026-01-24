@@ -6,7 +6,7 @@ export default function MessagesPage() {
     const [messages, setMessages] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
-    const [activeTab, setActiveTab] = useState("contact"); // "contact" or "team"
+    const [activeTab, setActiveTab] = useState("contact"); // "contact", "team", or "client"
     const [loading, setLoading] = useState(true);
     const [selectedMessage, setSelectedMessage] = useState(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
@@ -29,7 +29,7 @@ export default function MessagesPage() {
             const filter = {
                 pageNumber: pagination.pageNumber,
                 pageSize: pagination.pageSize,
-                type: activeTab === "contact" ? "ContactForm" : "TeamToAdmin",
+                type: activeTab === "contact" ? "ContactForm" : activeTab === "team" ? "TeamToAdmin" : "ClientToAdmin",
                 status: statusFilter !== "all" ? statusFilter : undefined,
                 searchTerm: searchTerm || undefined
             };
@@ -86,8 +86,8 @@ export default function MessagesPage() {
     const handleReply = async () => {
         if (!replyContent.trim() || !selectedMessage) return;
         
-        // Validate that we have a recipient for team messages
-        if (activeTab === "team" && !selectedMessage.senderUserId) {
+        // Validate that we have a recipient for team/client messages
+        if ((activeTab === "team" || activeTab === "client") && !selectedMessage.senderUserId) {
             alert('Cannot reply: No recipient user found for this message.');
             return;
         }
@@ -95,14 +95,14 @@ export default function MessagesPage() {
         try {
             setReplying(true);
             
-            // For TeamToAdmin messages, the recipient of the reply should be the sender of the original message
+            // For TeamToAdmin/ClientToAdmin messages, the recipient of the reply should be the sender of the original message
             // The admin's userId will be automatically extracted from the JWT token in the backend
             const replyData = {
                 subject: `Re: ${selectedMessage.subject}`,
                 content: replyContent,
-                type: activeTab === "team" ? "AdminToTeam" : "AdminToClient",
+                type: activeTab === "team" ? "AdminToTeam" : activeTab === "client" ? "AdminToClient" : "AdminToClient",
                 parentMessageId: selectedMessage.id,
-                recipientUserId: selectedMessage.senderUserId // The team member who sent the original message
+                recipientUserId: selectedMessage.senderUserId // The team member/client who sent the original message
             };
             
             const reply = await messagesAPI.create(replyData);
@@ -116,7 +116,8 @@ export default function MessagesPage() {
             setSelectedMessage(updatedMessage);
             setReplyContent("");
             
-            alert('Reply sent successfully! The team member will see your reply in their Communication page.');
+            const recipientType = activeTab === "team" ? "team member" : "client";
+            alert(`Reply sent successfully! The ${recipientType} will see your reply.`);
         } catch (error) {
             console.error('Error sending reply:', error);
             const errorMessage = error.message || 'Failed to send reply. Please try again.';
@@ -212,7 +213,7 @@ export default function MessagesPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-white mb-2">Messages</h1>
-                    <p className="text-slate-400">View and manage messages from contact form and team members</p>
+                    <p className="text-slate-400">View and manage messages from contact form, team members, and clients</p>
                 </div>
             </div>
 
@@ -244,6 +245,19 @@ export default function MessagesPage() {
                         }`}
                     >
                         Team Messages
+                    </button>
+                    <button
+                        onClick={() => {
+                            setActiveTab("client");
+                            setPagination(prev => ({ ...prev, pageNumber: 1 }));
+                        }}
+                        className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-all ${
+                            activeTab === "client"
+                                ? "bg-emerald-600 text-white"
+                                : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                        }`}
+                    >
+                        Client Messages
                     </button>
                 </div>
             </div>
@@ -297,7 +311,9 @@ export default function MessagesPage() {
                         <p className="text-slate-500 text-sm mt-2">
                             {activeTab === "contact" 
                                 ? "Messages from the contact form will appear here"
-                                : "Messages from team members will appear here"}
+                                : activeTab === "team"
+                                ? "Messages from team members will appear here"
+                                : "Messages from clients (approvals, inquiries, etc.) will appear here"}
                         </p>
                     </div>
                 ) : (
@@ -444,7 +460,7 @@ export default function MessagesPage() {
                             {/* Sender Info */}
                             <div className="bg-slate-700/30 rounded-xl p-4 space-y-3">
                                 <h4 className="text-slate-300 font-semibold mb-3">
-                                    {activeTab === "team" ? "Team Member Information" : "Sender Information"}
+                                    {activeTab === "team" ? "Team Member Information" : activeTab === "client" ? "Client Information" : "Sender Information"}
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -457,7 +473,7 @@ export default function MessagesPage() {
                                         <label className="text-slate-400 text-sm">Email</label>
                                         <p className="text-white mt-1">{selectedMessage.senderEmail || "N/A"}</p>
                                     </div>
-                                    {activeTab === "team" && selectedMessage.teamMemberName && (
+                                    {(activeTab === "team" || activeTab === "client") && selectedMessage.teamMemberName && (
                                         <div>
                                             <label className="text-slate-400 text-sm">Role</label>
                                             <p className="text-white mt-1">{selectedMessage.teamMemberName}</p>
@@ -498,8 +514,8 @@ export default function MessagesPage() {
                                 </div>
                             )}
 
-                            {/* Reply Section (only for team messages that have a senderUserId) */}
-                            {activeTab === "team" && selectedMessage.senderUserId && (
+                            {/* Reply Section (only for team/client messages that have a senderUserId) */}
+                            {(activeTab === "team" || activeTab === "client") && selectedMessage.senderUserId && (
                                 <div className="border-t border-slate-700/50 pt-4">
                                     <label className="text-slate-400 text-sm font-medium mb-2 block">Reply</label>
                                     <textarea

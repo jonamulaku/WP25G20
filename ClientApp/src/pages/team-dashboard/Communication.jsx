@@ -39,24 +39,60 @@ export default function Communication() {
             const userTasks = tasksResponse.items || [];
             setTasks(userTasks);
 
+            // Fetch AdminToTeam messages for task approvals/refusals
+            const adminMessagesResponse = await messagesAPI.getAll({ 
+                type: "AdminToTeam",
+                pageSize: 100 
+            });
+            const taskRelatedMessages = (adminMessagesResponse.items || []).filter(
+                msg => msg.recipientUserId === userInfo.id && 
+                       msg.relatedEntityType === "Task" &&
+                       (msg.subject?.includes("Approved") || msg.subject?.includes("Revision"))
+            );
+
+            // Load read notifications from localStorage
+            const readNotificationsKey = `teamNotificationsRead_${userInfo.id}`;
+            const readNotifications = JSON.parse(localStorage.getItem(readNotificationsKey) || '[]');
+
             // Generate notifications from recent task updates
             const recentTasks = userTasks
                 .filter(t => t.updatedAt || t.createdAt)
                 .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
                 .slice(0, 10);
             
-            const notifications = recentTasks.map((task, index) => ({
-                id: `notif-${task.id}-${index}`,
-                message: task.status === 'Completed' 
-                    ? `Task "${task.title}" was completed`
-                    : task.status === 'InProgress'
-                    ? `Task "${task.title}" is now in progress`
-                    : `Task "${task.title}" was updated`,
-                read: false,
-                createdAt: task.updatedAt || task.createdAt || new Date().toISOString()
-            }));
+            const taskNotifications = recentTasks.map((task, index) => {
+                const notificationId = `notif-task-${task.id}-${index}`;
+                return {
+                    id: notificationId,
+                    message: task.status === 'Completed' 
+                        ? `Task "${task.title}" was completed`
+                        : task.status === 'InProgress'
+                        ? `Task "${task.title}" is now in progress`
+                        : task.status === 'OnHold'
+                        ? `Task "${task.title}" needs revision`
+                        : `Task "${task.title}" was updated`,
+                    read: readNotifications.includes(notificationId),
+                    createdAt: task.updatedAt || task.createdAt || new Date().toISOString()
+                };
+            });
 
-            setNotifications(notifications);
+            // Add notifications from admin messages (approvals/refusals)
+            const messageNotifications = taskRelatedMessages.map((msg, index) => {
+                const notificationId = `notif-msg-${msg.id}-${index}`;
+                return {
+                    id: notificationId,
+                    message: msg.subject || msg.content,
+                    read: readNotifications.includes(notificationId),
+                    createdAt: msg.createdAt || new Date().toISOString()
+                };
+            });
+
+            // Combine and sort all notifications
+            const allNotifications = [...taskNotifications, ...messageNotifications]
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .slice(0, 10);
+
+            setNotifications(allNotifications);
         } catch (error) {
             console.error("Error fetching communication data:", error);
             setTasks([]);
@@ -67,9 +103,21 @@ export default function Communication() {
     };
 
     const handleMarkAsRead = (notificationId) => {
+        if (!userInfo || !userInfo.id) return;
+        
+        // Update state
         setNotifications(prev =>
             prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
         );
+        
+        // Save to localStorage
+        const readNotificationsKey = `teamNotificationsRead_${userInfo.id}`;
+        const readNotifications = JSON.parse(localStorage.getItem(readNotificationsKey) || '[]');
+        
+        if (!readNotifications.includes(notificationId)) {
+            readNotifications.push(notificationId);
+            localStorage.setItem(readNotificationsKey, JSON.stringify(readNotifications));
+        }
     };
 
     const fetchMessages = async () => {
@@ -77,7 +125,6 @@ export default function Communication() {
             if (!userInfo || !userInfo.id) return;
             
             // Fetch messages sent to admin (only from current user)
-            // The API automatically filters by userId, so we'll get messages where senderUserId = current user
             const sentResponse = await messagesAPI.getAll({ 
                 type: "TeamToAdmin",
                 pageSize: 100 
@@ -90,28 +137,84 @@ export default function Communication() {
             myMessages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             setMessagesToAdmin(myMessages);
             
-            // Fetch replies from admin (AdminToTeam messages)
-            // The API should automatically filter by userId to show messages where recipientUserId = current user
-            // The API now includes replies (messages with ParentMessageId) for team members
-            const repliesResponse = await messagesAPI.getAll({ 
-                type: "AdminToTeam",
-                pageSize: 100 
-            });
-            // Get all my message IDs for additional filtering
+            // Get all my message IDs for filtering
             const myMessageIds = myMessages.map(m => m.id);
-            // Filter replies where:
-            // 1. I am the recipient (recipientUserId matches my ID) - this should be handled by API
-            // 2. OR it's a reply to one of my messages (parentMessageId matches one of my message IDs)
-            const myReplies = (repliesResponse.items || []).filter(
-                msg => msg.recipientUserId === userInfo.id || 
-                       (msg.parentMessageId && myMessageIds.includes(msg.parentMessageId))
-            );
-            // Sort by creation date, newest first
-            myReplies.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            setAdminReplies(myReplies);
             
-            console.log('Fetched AdminToTeam messages:', repliesResponse.items?.length || 0);
-            console.log('Filtered replies for current user:', myReplies.length);
+            // Fetch AdminToTeam messages specifically (this includes replies where recipient is the team member)
+            const adminToTeamResponse = await messagesAPI.getAll({ 
+                type: "AdminToTeam",
+                pageSize: 1000 
+            });
+            
+            // Also fetch all messages to get nested replies from parent messages
+            const allMessagesResponse = await messagesAPI.getAll({ 
+                pageSize: 1000 
+            });
+            
+            // Collect all replies from multiple sources:
+            // 1. Flat AdminToTeam messages where I'm the recipient or it's a reply to my message
+            const flatReplies = (adminToTeamResponse.items || []).filter(
+                msg => {
+                    // Must be AdminToTeam type
+                    if (msg.type !== "AdminToTeam") return false;
+                    
+                    // Check if I'm the recipient
+                    if (msg.recipientUserId === userInfo.id) return true;
+                    
+                    // Check if it's a reply to one of my messages
+                    if (msg.parentMessageId && myMessageIds.includes(msg.parentMessageId)) return true;
+                    
+                    return false;
+                }
+            );
+            
+            // 2. Nested replies from parent messages (check the replies property)
+            const nestedReplies = [];
+            // Check replies from all messages (including my own messages)
+            (allMessagesResponse.items || []).forEach(msg => {
+                if (msg.replies && Array.isArray(msg.replies)) {
+                    msg.replies.forEach(reply => {
+                        // Check if it's an AdminToTeam reply to one of my messages
+                        if (reply.type === "AdminToTeam" && 
+                            (reply.recipientUserId === userInfo.id || 
+                             (reply.parentMessageId && myMessageIds.includes(reply.parentMessageId)))) {
+                            nestedReplies.push(reply);
+                        }
+                    });
+                }
+            });
+            
+            // Also check nested replies from my own messages (TeamToAdmin messages might have replies)
+            myMessages.forEach(msg => {
+                if (msg.replies && Array.isArray(msg.replies)) {
+                    msg.replies.forEach(reply => {
+                        // Check if it's an AdminToTeam reply
+                        if (reply.type === "AdminToTeam" && 
+                            (reply.recipientUserId === userInfo.id || 
+                             (reply.parentMessageId && myMessageIds.includes(reply.parentMessageId)))) {
+                            nestedReplies.push(reply);
+                        }
+                    });
+                }
+            });
+            
+            // Combine flat and nested replies, removing duplicates
+            const allReplies = [...flatReplies];
+            nestedReplies.forEach(nestedReply => {
+                if (!allReplies.some(r => r.id === nestedReply.id)) {
+                    allReplies.push(nestedReply);
+                }
+            });
+            
+            // Sort by creation date, newest first
+            allReplies.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setAdminReplies(allReplies);
+            
+            console.log('My messages to admin:', myMessages.length);
+            console.log('My message IDs:', myMessageIds);
+            console.log('Flat AdminToTeam replies:', flatReplies.length);
+            console.log('Nested replies:', nestedReplies.length);
+            console.log('Total admin replies:', allReplies.length);
         } catch (error) {
             console.error("Error fetching messages:", error);
         }
@@ -179,7 +282,7 @@ export default function Communication() {
                 {/* Left Column - Message Admin & Notifications */}
                 <div className="lg:col-span-1 space-y-6">
                     {/* Message Admin Section */}
-                    <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                    <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
                         <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                             <MessageSquare size={20} />
                             Message Admin
@@ -218,7 +321,7 @@ export default function Communication() {
                     </div>
 
                     {/* Notifications Section */}
-                    <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                    <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                                 <Bell size={20} />
@@ -286,8 +389,26 @@ export default function Communication() {
                         ) : (
                             <div className="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto">
                                 {messagesToAdmin.map((message) => {
-                                    // Find replies for this message
-                                    const messageReplies = adminReplies.filter(r => r.parentMessageId === message.id);
+                                    // Find replies for this message from multiple sources:
+                                    // 1. Flat replies where parentMessageId matches
+                                    const flatRepliesForMessage = adminReplies.filter(r => r.parentMessageId === message.id);
+                                    
+                                    // 2. Nested replies from the message's replies property
+                                    const nestedRepliesForMessage = (message.replies || []).filter(
+                                        r => r.type === "AdminToTeam"
+                                    );
+                                    
+                                    // Combine and remove duplicates
+                                    const allRepliesForMessage = [...flatRepliesForMessage];
+                                    nestedRepliesForMessage.forEach(nestedReply => {
+                                        if (!allRepliesForMessage.some(r => r.id === nestedReply.id)) {
+                                            allRepliesForMessage.push(nestedReply);
+                                        }
+                                    });
+                                    
+                                    // Sort replies by creation date
+                                    allRepliesForMessage.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                                    
                                     return (
                                         <div key={message.id} className="border border-slate-700/50 rounded-xl p-5 bg-slate-700/20 hover:bg-slate-700/30 transition-colors">
                                             {/* Original Message */}
@@ -306,9 +427,9 @@ export default function Communication() {
                                             </div>
                                             
                                             {/* Replies */}
-                                            {messageReplies.length > 0 ? (
+                                            {allRepliesForMessage.length > 0 ? (
                                                 <div className="space-y-3">
-                                                    {messageReplies.map((reply) => (
+                                                    {allRepliesForMessage.map((reply) => (
                                                         <div key={reply.id} className="pl-4 border-l-4 border-l-emerald-500 bg-slate-700/40 rounded-lg p-4">
                                                             <div className="flex items-center justify-between mb-2">
                                                                 <div className="flex items-center gap-2">

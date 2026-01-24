@@ -19,6 +19,7 @@ export default function DashboardOverview() {
         monthlyRevenue: 0,
         totalRevenue: 0,
         pendingTasks: 0,
+        inProgressTasks: 0,
         completedTasks: 0,
         overdueTasks: 0
     });
@@ -112,7 +113,8 @@ export default function DashboardOverview() {
             }
 
             // Task stats
-            const pendingTasks = tasks.filter(t => t.status === 'Pending' || t.status === 'In Progress').length;
+            const pendingTasks = tasks.filter(t => t.status === 'Pending').length;
+            const inProgressTasks = tasks.filter(t => t.status === 'InProgress').length;
             const completedTasks = tasks.filter(t => t.status === 'Completed').length;
             const now = new Date();
             const overdueTasks = tasks.filter(t => {
@@ -207,6 +209,7 @@ export default function DashboardOverview() {
                 monthlyRevenue,
                 totalRevenue,
                 pendingTasks,
+                inProgressTasks,
                 completedTasks,
                 overdueTasks
             });
@@ -288,7 +291,7 @@ export default function DashboardOverview() {
                     return (
                         <div
                             key={index}
-                            className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 hover:border-slate-600/50 transition-all"
+                            className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 hover:border-slate-600/50 transition-all"
                         >
                             <div className="flex items-center justify-between mb-4">
                                 <div className={`p-3 rounded-xl ${colorClasses[card.color]}`}>
@@ -315,7 +318,7 @@ export default function DashboardOverview() {
             {/* Charts and Stats Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Revenue Chart */}
-                <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h2 className="text-xl font-bold text-white mb-1">Revenue Overview</h2>
@@ -326,21 +329,33 @@ export default function DashboardOverview() {
                     {revenueData.length > 0 ? (
                         <>
                             <div className="h-64 flex items-end justify-between gap-2">
-                                {revenueData.map((data, index) => (
-                                    <div key={index} className="flex-1 flex flex-col items-center group">
-                                        <div className="w-full relative">
-                                            <div
-                                                className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-lg mb-2 transition-all hover:opacity-80 cursor-pointer"
-                                                style={{ height: `${(data.value / maxRevenue) * 100}%`, minHeight: '4px' }}
-                                                title={`${data.fullMonth}: $${data.value.toLocaleString()}`}
-                                            />
+                                {revenueData.map((data, index) => {
+                                    // Calculate height percentage - ensure bars are visible
+                                    let heightPercent = 0;
+                                    if (data.value > 0 && maxRevenue > 0) {
+                                        heightPercent = (data.value / maxRevenue) * 100;
+                                        // Ensure minimum height for visibility (at least 10% for non-zero values)
+                                        heightPercent = Math.max(heightPercent, 10);
+                                    } else {
+                                        // Zero values get a small visible indicator
+                                        heightPercent = 2;
+                                    }
+                                    return (
+                                        <div key={index} className="flex-1 flex flex-col items-center group h-full">
+                                            <div className="w-full h-full flex items-end">
+                                                <div
+                                                    className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-lg mb-2 transition-all hover:opacity-80 cursor-pointer"
+                                                    style={{ height: `${heightPercent}%`, minHeight: data.value === 0 ? '2px' : '8px' }}
+                                                    title={`${data.fullMonth}: $${data.value.toLocaleString()}`}
+                                                />
+                                            </div>
+                                            <span className="text-xs text-slate-400 mt-2">{data.month}</span>
+                                            <span className="text-xs text-slate-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                ${data.value.toLocaleString()}
+                                            </span>
                                         </div>
-                                        <span className="text-xs text-slate-400">{data.month}</span>
-                                        <span className="text-xs text-slate-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            ${data.value.toLocaleString()}
-                                        </span>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                             <div className="mt-4 pt-4 border-t border-slate-700/50 flex items-center justify-between">
                                 <div>
@@ -368,8 +383,8 @@ export default function DashboardOverview() {
                 </div>
 
                 {/* Task Status */}
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-                    <h2 className="text-xl font-bold text-white mb-6">Task Status</h2>
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
+                    <h2 className="text-xl font-bold text-white mb-4">Task Status</h2>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -383,7 +398,7 @@ export default function DashboardOverview() {
                                 <div className="w-3 h-3 rounded-full bg-amber-500"></div>
                                 <span className="text-slate-300">In Progress</span>
                             </div>
-                            <span className="text-white font-semibold">{stats.pendingTasks}</span>
+                            <span className="text-white font-semibold">{stats.inProgressTasks}</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -405,8 +420,8 @@ export default function DashboardOverview() {
             {/* Campaign Performance & Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Campaign Performance */}
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-                    <h2 className="text-xl font-bold text-white mb-6">Campaign Performance</h2>
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
+                    <h2 className="text-xl font-bold text-white mb-4">Campaign Performance</h2>
                     <div className="space-y-4">
                         {[
                             { name: "Active", count: campaignStatuses.active, color: "emerald" },
@@ -434,8 +449,8 @@ export default function DashboardOverview() {
                 </div>
 
                 {/* Recent Activity */}
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-6">
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
+                    <div className="flex items-center justify-between mb-4">
                         <h2 className="text-xl font-bold text-white">Recent Activity</h2>
                         <button className="text-sm text-emerald-400 hover:text-emerald-300">
                             View All

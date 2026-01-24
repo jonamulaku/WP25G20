@@ -71,23 +71,58 @@ namespace WP25G20.Services
 
                 if (!isAdmin)
                 {
-                    // Team members see messages where they are recipient or sender
-                    query = query.Where(m =>
-                        m.RecipientUserId == userId ||
-                        m.SenderUserId == userId ||
-                        (m.Type == MessageType.TeamToAdmin && m.SenderUserId == userId));
+                    var isClient = user != null && await _userManager.IsInRoleAsync(user, "Client");
+                    
+                    if (isClient)
+                    {
+                        // Clients see messages where they are recipient or sender, or related to their campaigns
+                        query = query.Where(m =>
+                            m.RecipientUserId == userId ||
+                            m.SenderUserId == userId ||
+                            m.Type == MessageType.ClientToAdmin ||
+                            m.Type == MessageType.AdminToClient);
+                    }
+                    else
+                    {
+                        // Team members see messages where they are recipient or sender
+                        query = query.Where(m =>
+                            m.RecipientUserId == userId ||
+                            m.SenderUserId == userId ||
+                            (m.Type == MessageType.TeamToAdmin && m.SenderUserId == userId));
+                    }
                 }
             }
 
             // Only show parent messages (not replies) in main list
             // EXCEPTION: For team members fetching AdminToTeam messages, include replies where they are the recipient
-            if (parsedMessageType == MessageType.AdminToTeam && !isAdmin && !string.IsNullOrEmpty(userId))
+            // EXCEPTION: For clients, include replies where they are the recipient (to see admin replies)
+            if (!string.IsNullOrEmpty(userId))
             {
-                // For team members fetching AdminToTeam, include both parent messages and replies where they are recipient
-                // This allows them to see replies to their messages
-                query = query.Where(m => 
-                    m.ParentMessageId == null || 
-                    (m.ParentMessageId != null && m.RecipientUserId == userId));
+                var user = await _userManager.FindByIdAsync(userId);
+                var isClient = user != null && await _userManager.IsInRoleAsync(user, "Client");
+                var isTeamMember = user != null && await _userManager.IsInRoleAsync(user, "TeamMember");
+                
+                if ((parsedMessageType == MessageType.AdminToTeam && isTeamMember) || 
+                    (isClient && (parsedMessageType == MessageType.AdminToClient || parsedMessageType == null)))
+                {
+                    // Include both parent messages and replies where they are recipient
+                    // Also include replies to messages they sent (parentMessageId check will be done in frontend)
+                    query = query.Where(m => 
+                        m.ParentMessageId == null || 
+                        (m.ParentMessageId != null && m.RecipientUserId == userId));
+                }
+                else if (isTeamMember && parsedMessageType == null)
+                {
+                    // Team member fetching all messages - include replies where they are recipient
+                    query = query.Where(m => 
+                        m.ParentMessageId == null || 
+                        (m.ParentMessageId != null && m.RecipientUserId == userId));
+                }
+                else
+                {
+                    // For admins and other cases, only show parent messages
+                    query = query.Where(m => m.ParentMessageId == null);
+                }
             }
             else
             {
@@ -147,6 +182,18 @@ namespace WP25G20.Services
                 throw new ArgumentException("Invalid message type");
             }
 
+            // For ClientToAdmin messages, automatically find an admin user as recipient
+            string? recipientUserId = dto.RecipientUserId;
+            if (messageType == MessageType.ClientToAdmin && string.IsNullOrEmpty(recipientUserId))
+            {
+                var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+                var firstAdmin = adminUsers.FirstOrDefault();
+                if (firstAdmin != null)
+                {
+                    recipientUserId = firstAdmin.Id;
+                }
+            }
+
             var message = new Message
             {
                 Subject = dto.Subject,
@@ -156,7 +203,7 @@ namespace WP25G20.Services
                 SenderName = dto.SenderName,
                 SenderEmail = dto.SenderEmail,
                 SenderUserId = userId,
-                RecipientUserId = dto.RecipientUserId,
+                RecipientUserId = recipientUserId,
                 ClientId = dto.ClientId,
                 TeamMemberId = dto.TeamMemberId,
                 RelatedEntityId = dto.RelatedEntityId,

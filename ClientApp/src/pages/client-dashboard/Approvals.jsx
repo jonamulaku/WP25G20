@@ -1,163 +1,359 @@
-import { useState } from "react";
-import { Search, Filter, CheckCircle2, XCircle, MessageSquare, Clock, History, Eye, Send, Image, Video, FileText } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Filter, CheckCircle2, XCircle, ChevronDown, ChevronUp, List } from "lucide-react";
+import { campaignsAPI, tasksAPI, messagesAPI, approvalsAPI } from "../../services/api";
+import { useOutletContext } from "react-router-dom";
 
 export default function Approvals() {
-    const [approvals, setApprovals] = useState([
-        { 
-            id: 1, 
-            item: "Social Media Post - Instagram", 
-            campaign: "Q1 Social Media Campaign", 
-            type: "Image", 
-            status: "Pending", 
-            due: "2025-01-20",
-            preview: { type: "image", url: "https://via.placeholder.com/400x400" },
-            explanation: "This Instagram post introduces our new product line with vibrant visuals and compelling copy.",
-            ctaDescription: "Click to learn more about our new products",
-            platformSpecs: "1080x1080px, JPEG/PNG, Max 8MB",
-            history: [
-                { action: "Created", user: "Agency Team", timestamp: "2025-01-15T10:00:00", comment: "Initial submission for review" }
-            ]
-        },
-        { 
-            id: 2, 
-            item: "Video Ad - YouTube", 
-            campaign: "Brand Awareness Campaign", 
-            type: "Video", 
-            status: "Pending", 
-            due: "2025-01-22",
-            preview: { type: "video", url: "https://via.placeholder.com/400x225" },
-            explanation: "YouTube video ad showcasing our brand story and values.",
-            ctaDescription: "Visit our website",
-            platformSpecs: "1920x1080px, MP4, 30 seconds max",
-            history: []
-        },
-        { 
-            id: 3, 
-            item: "Email Template", 
-            campaign: "Email Marketing Drive", 
-            type: "Email", 
-            status: "Approved", 
-            due: "2025-01-18",
-            preview: { type: "text", content: "Email preview content here..." },
-            explanation: "Monthly newsletter template for our subscribers.",
-            ctaDescription: "Subscribe to our newsletter",
-            platformSpecs: "600px width, HTML, Responsive design",
-            history: [
-                { action: "Created", user: "Agency Team", timestamp: "2025-01-10T14:00:00", comment: "Initial submission" },
-                { action: "Approved", user: "Client", timestamp: "2025-01-12T09:00:00", comment: "Looks great!" }
-            ]
-        },
-        { 
-            id: 4, 
-            item: "Facebook Ad Creative", 
-            campaign: "Q1 Social Media Campaign", 
-            type: "Image", 
-            status: "Changes Requested", 
-            due: "2025-01-21",
-            preview: { type: "image", url: "https://via.placeholder.com/400x400" },
-            explanation: "Facebook ad creative for product promotion.",
-            ctaDescription: "Shop Now",
-            platformSpecs: "1200x628px, JPEG/PNG, Max 8MB",
-            history: [
-                { action: "Created", user: "Agency Team", timestamp: "2025-01-14T11:00:00", comment: "Initial submission" },
-                { action: "Changes Requested", user: "Client", timestamp: "2025-01-16T15:00:00", comment: "Please adjust colors to match brand guidelines" },
-                { action: "Updated", user: "Agency Team", timestamp: "2025-01-17T10:00:00", comment: "Colors updated per feedback" }
-            ]
-        }
-    ]);
-
+    const { userInfo } = useOutletContext();
+    const [campaigns, setCampaigns] = useState([]);
+    const [taskApprovals, setTaskApprovals] = useState({}); // { taskId: { status: "Approved"|"Rejected", approvalId: number } }
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
-    const [selectedApproval, setSelectedApproval] = useState(null);
-    const [showDetail, setShowDetail] = useState(false);
-    const [comment, setComment] = useState("");
-    const [showHistory, setShowHistory] = useState(false);
+    const [expandedCampaigns, setExpandedCampaigns] = useState(new Set());
+    const [processing, setProcessing] = useState({});
 
-    const statusOptions = ["all", "Pending", "Approved", "Changes Requested", "Rejected"];
+    useEffect(() => {
+        fetchData();
+    }, [userInfo]);
 
-    const filteredApprovals = approvals.filter(approval => {
-        const matchesSearch = approval.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            approval.campaign.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === "all" || approval.status === statusFilter;
-        return matchesSearch && matchesStatus;
+    // Auto-expand campaigns that have tasks on initial load
+    useEffect(() => {
+        if (campaigns.length > 0 && expandedCampaigns.size === 0 && !loading) {
+            const campaignsWithTasks = campaigns.filter(c => c.tasks && c.tasks.length > 0);
+            if (campaignsWithTasks.length > 0) {
+                setExpandedCampaigns(new Set(campaignsWithTasks.map(c => c.id)));
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [campaigns.length, loading]);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            // Fetch campaigns
+            const campaignsResponse = await campaignsAPI.getAll({ pageSize: 1000 });
+            const campaignsData = campaignsResponse.items || [];
+            
+            // Fetch all tasks for these campaigns - only show completed tasks
+            const tasksResponse = await tasksAPI.getAll({ pageSize: 1000 });
+            const allTasks = tasksResponse.items || [];
+            
+            // Filter to only show completed tasks
+            const completedTasks = allTasks.filter(task => task.status === "Completed");
+            
+            // Group tasks by campaign
+            const campaignsWithTasks = campaignsData.map(campaign => ({
+                ...campaign,
+                tasks: completedTasks.filter(task => task.campaignId === campaign.id)
+            }));
+            
+            setCampaigns(campaignsWithTasks);
+            
+            // Fetch existing approval requests to restore approval status
+            const approvalsResponse = await approvalsAPI.getAll({ pageSize: 1000 });
+            const approvals = approvalsResponse.items || [];
+            
+            // Map approvals by taskId
+            const approvalsMap = {};
+            approvals.forEach(approval => {
+                if (approval.taskId) {
+                    approvalsMap[approval.taskId] = {
+                        status: approval.status,
+                        approvalId: approval.id
+                    };
+                }
+            });
+            
+            setTaskApprovals(approvalsMap);
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            alert('Failed to fetch data. Please try again.');
+            setCampaigns([]);
+            setTaskApprovals({});
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleCampaign = (campaignId) => {
+        const newExpanded = new Set(expandedCampaigns);
+        if (newExpanded.has(campaignId)) {
+            newExpanded.delete(campaignId);
+        } else {
+            newExpanded.add(campaignId);
+        }
+        setExpandedCampaigns(newExpanded);
+    };
+
+    const getTaskStatus = (taskId) => {
+        const status = taskApprovals[taskId]?.status;
+        if (!status) return null;
+        // Normalize status - ensure first letter is uppercase, rest lowercase
+        const normalized = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+        // Map common variations
+        if (normalized === "Pending") return "Pending";
+        if (normalized === "Approved") return "Approved";
+        if (normalized === "Rejected") return "Rejected";
+        return normalized;
+    };
+
+    const checkCampaignApproval = async (campaign) => {
+        // Check if all tasks are approved
+        const allTasksApproved = campaign.tasks.every(task => {
+            const status = getTaskStatus(task.id);
+            return status === "Approved";
+        });
+
+        if (allTasksApproved && campaign.tasks.length > 0) {
+            // Check if campaign approval message already sent
+            const campaignApprovalExists = campaign.tasks.some(task => {
+                const approval = taskApprovals[task.id];
+                return approval && approval.campaignApproved;
+            });
+
+            if (!campaignApprovalExists) {
+                // Send message that campaign is fully approved
+                const clientName = userInfo?.firstName && userInfo?.lastName 
+                    ? `${userInfo.firstName} ${userInfo.lastName}`.trim()
+                    : userInfo?.email || "Client";
+                
+                const taskList = campaign.tasks.map(t => `- ${t.title}`).join('\n');
+                const messageContent = `${clientName} has approved ALL tasks for campaign "${campaign.name}".\n\nThe campaign is now fully approved with all ${campaign.tasks.length} tasks approved:\n${taskList}`;
+
+                try {
+                    await messagesAPI.create({
+                        subject: `Campaign Fully Approved: ${campaign.name}`,
+                        content: messageContent,
+                        type: "ClientToAdmin",
+                        senderName: clientName,
+                        senderEmail: userInfo?.email,
+                        clientId: campaign.clientId,
+                        relatedEntityId: campaign.id,
+                        relatedEntityType: "Campaign"
+                    });
+
+                    // Mark that campaign approval was sent
+                    const updatedApprovals = { ...taskApprovals };
+                    campaign.tasks.forEach(task => {
+                        if (updatedApprovals[task.id]) {
+                            updatedApprovals[task.id] = {
+                                ...updatedApprovals[task.id],
+                                campaignApproved: true
+                            };
+                        }
+                    });
+                    setTaskApprovals(updatedApprovals);
+                    return true; // Campaign was just approved
+                } catch (error) {
+                    console.error('Error sending campaign approval message:', error);
+                    return false;
+                }
+            }
+            return true; // Campaign was already approved
+        }
+        return false; // Not all tasks approved yet
+    };
+
+    const handleTaskApprove = async (task, campaign) => {
+        const currentStatus = getTaskStatus(task.id);
+        const wasRejected = currentStatus === "Rejected";
+        const confirmMessage = wasRejected 
+            ? `Re-approve task "${task.title}"? (This task was previously rejected)`
+            : `Approve task "${task.title}"?`;
+        
+        if (!window.confirm(confirmMessage)) {
+            return;
+        }
+
+        const taskKey = `task-${task.id}`;
+        try {
+            setProcessing(prev => ({ ...prev, [taskKey]: true }));
+
+            // Check if approval request already exists
+            let approvalId = taskApprovals[task.id]?.approvalId;
+            
+            if (!approvalId) {
+                // Create approval request
+                const newApproval = await approvalsAPI.create({
+                    campaignId: campaign.id,
+                    taskId: task.id,
+                    itemName: task.title,
+                    description: task.description || `Task: ${task.title}`,
+                    itemType: "Task"
+                });
+                approvalId = newApproval.id;
+            }
+
+            // Process the approval (this will update status from Rejected to Approved if needed)
+            await approvalsAPI.processApproval(approvalId, "Approved", null);
+
+            // Update local state
+            setTaskApprovals(prev => ({
+                ...prev,
+                [task.id]: {
+                    status: "Approved",
+                    approvalId: approvalId,
+                    campaignApproved: false
+                }
+            }));
+
+            // Send individual task approval message
+            const clientName = userInfo?.firstName && userInfo?.lastName 
+                ? `${userInfo.firstName} ${userInfo.lastName}`.trim()
+                : userInfo?.email || "Client";
+            
+            const messageContent = wasRejected
+                ? `${clientName} has re-approved the task "${task.title}" for campaign "${campaign.name}" after previously rejecting it.\n\nTask Details:\n${task.description || 'No description provided'}`
+                : `${clientName} has approved the task "${task.title}" for campaign "${campaign.name}".\n\nTask Details:\n${task.description || 'No description provided'}`;
+
+            await messagesAPI.create({
+                subject: wasRejected ? `Task Re-Approved: ${task.title}` : `Task Approved: ${task.title}`,
+                content: messageContent,
+                type: "ClientToAdmin",
+                senderName: clientName,
+                senderEmail: userInfo?.email,
+                clientId: campaign.clientId,
+                relatedEntityId: task.id,
+                relatedEntityType: "Task"
+            });
+
+            // Check if campaign should be approved (all tasks approved) - this will send campaign message only if all tasks are approved
+            const allApproved = await checkCampaignApproval(campaign);
+
+            if (allApproved) {
+                alert('All tasks approved! Campaign is now fully approved. Admin has been notified.');
+            } else {
+                alert('Task approved successfully! Admin has been notified.');
+            }
+        } catch (error) {
+            console.error('Error approving task:', error);
+            alert(error.message || 'Failed to approve task. Please try again.');
+        } finally {
+            setProcessing(prev => ({ ...prev, [taskKey]: false }));
+        }
+    };
+
+    const handleTaskReject = async (task, campaign) => {
+        const comment = window.prompt(`Reject task "${task.title}"? Please provide a reason:`, "");
+        if (comment === null) return; // User cancelled
+        if (!comment.trim()) {
+            alert('Please provide a reason for rejection.');
+            return;
+        }
+
+        const taskKey = `task-${task.id}`;
+        try {
+            setProcessing(prev => ({ ...prev, [taskKey]: true }));
+
+            // Check if approval request already exists
+            let approvalId = taskApprovals[task.id]?.approvalId;
+            
+            if (!approvalId) {
+                // Create approval request
+                const newApproval = await approvalsAPI.create({
+                    campaignId: campaign.id,
+                    taskId: task.id,
+                    itemName: task.title,
+                    description: task.description || `Task: ${task.title}`,
+                    itemType: "Task"
+                });
+                approvalId = newApproval.id;
+            }
+
+            // Process the rejection
+            await approvalsAPI.processApproval(approvalId, "Rejected", comment);
+
+            // Update local state
+            setTaskApprovals(prev => ({
+                ...prev,
+                [task.id]: {
+                    status: "Rejected",
+                    approvalId: approvalId,
+                    campaignApproved: false
+                }
+            }));
+
+            // Send message to admin
+            const clientName = userInfo?.firstName && userInfo?.lastName 
+                ? `${userInfo.firstName} ${userInfo.lastName}`.trim()
+                : userInfo?.email || "Client";
+            
+            const messageContent = `${clientName} has rejected the task "${task.title}" for campaign "${campaign.name}".\n\nTask Details:\n${task.description || 'No description provided'}\n\nRejection Reason:\n${comment}`;
+
+            await messagesAPI.create({
+                subject: `Task Rejected: ${task.title}`,
+                content: messageContent,
+                type: "ClientToAdmin",
+                senderName: clientName,
+                senderEmail: userInfo?.email,
+                clientId: campaign.clientId,
+                relatedEntityId: task.id,
+                relatedEntityType: "Task"
+            });
+
+            alert('Task rejected successfully! Admin has been notified.');
+        } catch (error) {
+            console.error('Error rejecting task:', error);
+            alert(error.message || 'Failed to reject task. Please try again.');
+        } finally {
+            setProcessing(prev => ({ ...prev, [taskKey]: false }));
+        }
+    };
+
+    const filteredCampaigns = campaigns.filter(campaign => {
+        const matchesSearch = campaign.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            campaign.description?.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        // Filter by status - show campaigns with pending tasks if statusFilter is "Pending"
+        if (statusFilter === "Pending") {
+            const hasPendingTasks = campaign.tasks.some(task => {
+                const status = getTaskStatus(task.id);
+                return !status || status === null;
+            });
+            return matchesSearch && hasPendingTasks;
+        }
+        
+        return matchesSearch;
     });
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case "Approved":
-                return "bg-emerald-500/20 text-emerald-400";
-            case "Pending":
-                return "bg-amber-500/20 text-amber-400";
-            case "Changes Requested":
-                return "bg-blue-500/20 text-blue-400";
-            case "Rejected":
-                return "bg-red-500/20 text-red-400";
-            default:
-                return "bg-slate-500/20 text-slate-400";
-        }
+    const getCampaignApprovalStatus = (campaign) => {
+        if (campaign.tasks.length === 0) return null;
+        
+        const allApproved = campaign.tasks.every(task => getTaskStatus(task.id) === "Approved");
+        const hasRejected = campaign.tasks.some(task => getTaskStatus(task.id) === "Rejected");
+        const allPending = campaign.tasks.every(task => !getTaskStatus(task.id));
+        
+        if (allApproved) return "Approved";
+        if (hasRejected) return "Partially Rejected";
+        if (allPending) return "Pending";
+        return "In Progress";
     };
 
-    const openDetail = (approval) => {
-        setSelectedApproval(approval);
-        setShowDetail(true);
-        setShowHistory(false);
-    };
-
-    const closeDetail = () => {
-        setShowDetail(false);
-        setSelectedApproval(null);
-        setComment("");
-    };
-
-    const handleAction = (action, approvalId) => {
-        // TODO: Implement API call to update approval status
-        const updatedApprovals = approvals.map(approval => {
-            if (approval.id === approvalId) {
-                const newHistory = [...approval.history, {
-                    action: action,
-                    user: "Client",
-                    timestamp: new Date().toISOString(),
-                    comment: comment || `${action} by client`
-                }];
-                return { ...approval, status: action === "Approved" ? "Approved" : action === "Rejected" ? "Rejected" : "Changes Requested", history: newHistory };
-            }
-            return approval;
-        });
-        setApprovals(updatedApprovals);
-        setComment("");
-        setShowDetail(false);
-        setSelectedApproval(null);
-    };
-
-    const getPreviewIcon = (type) => {
-        switch (type) {
-            case "image":
-            case "Image":
-                return <Image size={24} className="text-blue-400" />;
-            case "video":
-            case "Video":
-                return <Video size={24} className="text-red-400" />;
-            default:
-                return <FileText size={24} className="text-emerald-400" />;
-        }
-    };
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-slate-400">Loading approvals...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
             {/* Header */}
             <div>
                 <h1 className="text-3xl font-bold text-white mb-2">Approvals</h1>
-                <p className="text-slate-400">Review and approve campaign materials</p>
+                <p className="text-slate-400">Review and approve campaigns and their tasks</p>
             </div>
 
             {/* Search and Filters */}
-            <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+            <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1 relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                         <input
                             type="text"
-                            placeholder="Search approvals..."
+                            placeholder="Search campaigns..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-12 pr-4 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
@@ -170,207 +366,152 @@ export default function Approvals() {
                             onChange={(e) => setStatusFilter(e.target.value)}
                             className="px-4 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                         >
-                            {statusOptions.map(status => (
-                                <option key={status} value={status}>
-                                    {status === "all" ? "All Status" : status}
-                                </option>
-                            ))}
+                            <option value="all">All Status</option>
+                            <option value="Pending">Pending Only</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            {/* Approvals Table */}
-            <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-slate-700/30">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Item</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Campaign</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Type</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Status</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Due</th>
-                                <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-700/50">
-                            {filteredApprovals.map((approval) => (
-                                <tr key={approval.id} className="hover:bg-slate-700/20 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            {getPreviewIcon(approval.type)}
-                                            <span className="text-white font-medium">{approval.item}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-slate-300">{approval.campaign}</span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-slate-300">{approval.type}</span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(approval.status)}`}>
-                                            {approval.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2 text-slate-300">
-                                            <Clock size={14} />
-                                            <span>{new Date(approval.due).toLocaleDateString()}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center justify-end">
-                                            <button
-                                                onClick={() => openDetail(approval)}
-                                                className="px-4 py-2 bg-emerald-600/20 text-emerald-400 rounded-lg hover:bg-emerald-600/30 transition-all text-sm font-medium flex items-center gap-2"
-                                            >
-                                                <Eye size={16} />
-                                                View Details
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            {/* Campaigns List */}
+            <div className="space-y-4">
+                {filteredCampaigns.length === 0 ? (
+                    <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5 text-center">
+                        <p className="text-slate-400">No campaigns found</p>
+                    </div>
+                ) : (
+                    filteredCampaigns.map((campaign) => {
+                        const isExpanded = expandedCampaigns.has(campaign.id);
+                        const pendingTasksCount = campaign.tasks.filter(task => {
+                            const status = getTaskStatus(task.id);
+                            return !status || status === null;
+                        }).length;
+                        const campaignStatus = getCampaignApprovalStatus(campaign);
 
-            {/* Approval Detail View Modal */}
-            {showDetail && selectedApproval && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-slate-800 border border-slate-700/50 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="sticky top-0 bg-slate-800 border-b border-slate-700/50 px-6 py-4 flex items-center justify-between">
-                            <h2 className="text-2xl font-bold text-white">{selectedApproval.item}</h2>
-                            <button
-                                onClick={closeDetail}
-                                className="text-slate-400 hover:text-white transition-colors"
+                        return (
+                            <div
+                                key={campaign.id}
+                                className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden"
                             >
-                                <XCircle size={24} />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-6">
-                            {/* Preview Section */}
-                            <div>
-                                <h3 className="text-lg font-semibold text-white mb-4">Preview</h3>
-                                <div className="bg-slate-900/50 rounded-xl p-6 flex items-center justify-center min-h-[300px]">
-                                    {selectedApproval.preview.type === "image" && (
-                                        <img src={selectedApproval.preview.url} alt="Preview" className="max-w-full max-h-[400px] rounded-lg" />
-                                    )}
-                                    {selectedApproval.preview.type === "video" && (
-                                        <div className="w-full aspect-video bg-slate-700/50 rounded-lg flex items-center justify-center">
-                                            <Video size={48} className="text-slate-400" />
-                                            <span className="ml-2 text-slate-400">Video Preview</span>
-                                        </div>
-                                    )}
-                                    {selectedApproval.preview.type === "text" && (
-                                        <div className="w-full bg-white text-slate-900 p-8 rounded-lg">
-                                            <p>{selectedApproval.preview.content}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Details Section */}
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <h3 className="text-sm font-semibold text-slate-400 mb-2">Campaign</h3>
-                                    <p className="text-white">{selectedApproval.campaign}</p>
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-semibold text-slate-400 mb-2">Type</h3>
-                                    <p className="text-white">{selectedApproval.type}</p>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h3 className="text-sm font-semibold text-slate-400 mb-2">Explanation from Agency</h3>
-                                <p className="text-white">{selectedApproval.explanation}</p>
-                            </div>
-
-                            <div>
-                                <h3 className="text-sm font-semibold text-slate-400 mb-2">CTA Description</h3>
-                                <p className="text-white">{selectedApproval.ctaDescription}</p>
-                            </div>
-
-                            <div>
-                                <h3 className="text-sm font-semibold text-slate-400 mb-2">Platform Specifications</h3>
-                                <p className="text-white">{selectedApproval.platformSpecs}</p>
-                            </div>
-
-                            {/* Comment Section */}
-                            <div>
-                                <h3 className="text-sm font-semibold text-slate-400 mb-2">Add Comment</h3>
-                                <textarea
-                                    value={comment}
-                                    onChange={(e) => setComment(e.target.value)}
-                                    placeholder="Add your comment or feedback..."
-                                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 min-h-[100px]"
-                                />
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex items-center gap-4 pt-4 border-t border-slate-700/50">
-                                <button
-                                    onClick={() => handleAction("Approved", selectedApproval.id)}
-                                    className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <CheckCircle2 size={20} />
-                                    Approve
-                                </button>
-                                <button
-                                    onClick={() => handleAction("Changes Requested", selectedApproval.id)}
-                                    className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <MessageSquare size={20} />
-                                    Request Changes
-                                </button>
-                                <button
-                                    onClick={() => handleAction("Rejected", selectedApproval.id)}
-                                    className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <XCircle size={20} />
-                                    Reject
-                                </button>
-                            </div>
-
-                            {/* Approval History */}
-                            <div className="pt-4 border-t border-slate-700/50">
-                                <button
-                                    onClick={() => setShowHistory(!showHistory)}
-                                    className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors mb-4"
-                                >
-                                    <History size={20} />
-                                    <span className="font-medium">View Approval History ({selectedApproval.history.length})</span>
-                                </button>
-                                {showHistory && (
-                                    <div className="space-y-3">
-                                        {selectedApproval.history.map((entry, index) => (
-                                            <div key={index} className="bg-slate-700/30 rounded-xl p-4">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="text-white font-medium">{entry.action}</span>
-                                                    <span className="text-slate-400 text-sm">
-                                                        {new Date(entry.timestamp).toLocaleString()}
+                                {/* Campaign Header */}
+                                <div className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <h3 className="text-xl font-bold text-white">{campaign.name}</h3>
+                                                {pendingTasksCount > 0 && (
+                                                    <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium">
+                                                        {pendingTasksCount} Pending
                                                     </span>
-                                                </div>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="text-slate-400 text-sm">By:</span>
-                                                    <span className="text-slate-300 text-sm">{entry.user}</span>
-                                                </div>
-                                                {entry.comment && (
-                                                    <p className="text-slate-300 text-sm mt-2">{entry.comment}</p>
+                                                )}
+                                                {campaignStatus === "Approved" && (
+                                                    <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium">
+                                                        Campaign Approved
+                                                    </span>
                                                 )}
                                             </div>
-                                        ))}
+                                            {campaign.description && (
+                                                <p className="text-slate-400 text-sm mb-2">{campaign.description}</p>
+                                            )}
+                                            <div className="flex items-center gap-4 text-sm text-slate-400">
+                                                <span>{campaign.tasks.length} Tasks</span>
+                                                {campaign.tasks.length > 0 && (
+                                                    <span>
+                                                        {campaign.tasks.filter(t => getTaskStatus(t.id) === "Approved").length} Approved, {" "}
+                                                        {campaign.tasks.filter(t => getTaskStatus(t.id) === "Rejected").length} Rejected
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => toggleCampaign(campaign.id)}
+                                                className="p-2 text-slate-400 hover:text-white transition-colors"
+                                            >
+                                                {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Tasks List */}
+                                {isExpanded && campaign.tasks.length > 0 && (
+                                    <div className="border-t border-slate-700/50 px-6 py-4 bg-slate-900/30">
+                                        <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                                            <List size={16} />
+                                            Tasks ({campaign.tasks.length})
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {campaign.tasks.map((task) => {
+                                                const taskStatus = getTaskStatus(task.id);
+                                                const taskKey = `task-${task.id}`;
+                                                const isProcessing = processing[taskKey];
+
+                                                return (
+                                                    <div
+                                                        key={task.id}
+                                                        className="bg-slate-700/30 rounded-lg p-4"
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-3 mb-1">
+                                                                    <span className="text-white font-medium">{task.title}</span>
+                                                                    {taskStatus && taskStatus !== "Pending" && (
+                                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${
+                                                                            taskStatus === "Approved" 
+                                                                                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                                                                : "bg-red-500/20 text-red-400 border-red-500/30"
+                                                                        }`}>
+                                                                            {taskStatus}
+                                                                        </span>
+                                                                    )}
+                                                                    {taskStatus === "Pending" && (
+                                                                        <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium border border-amber-500/30">
+                                                                            Pending
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {task.description && (
+                                                                    <p className="text-slate-400 text-sm mt-1">{task.description}</p>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 ml-4">
+                                                                {/* Always show approve/reject buttons - allow changing status */}
+                                                                <button
+                                                                    onClick={() => handleTaskApprove(task, campaign)}
+                                                                    disabled={isProcessing}
+                                                                    className="p-2 bg-emerald-600/20 text-emerald-400 rounded-lg hover:bg-emerald-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                    title={taskStatus === "Rejected" ? "Approve Task (Previously Rejected)" : "Approve Task"}
+                                                                >
+                                                                    <CheckCircle2 size={20} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleTaskReject(task, campaign)}
+                                                                    disabled={isProcessing}
+                                                                    className="p-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                    title={taskStatus === "Approved" ? "Reject Task (Previously Approved)" : "Reject Task"}
+                                                                >
+                                                                    <XCircle size={20} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {isExpanded && campaign.tasks.length === 0 && (
+                                    <div className="border-t border-slate-700/50 px-6 py-4 bg-slate-900/30">
+                                        <p className="text-slate-500 text-sm italic">No tasks for this campaign</p>
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+                        );
+                    })
+                )}
+            </div>
         </div>
     );
 }

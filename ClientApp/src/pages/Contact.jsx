@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { messagesAPI } from "../services/api";
 import {
@@ -24,6 +24,15 @@ export default function Contact() {
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
+
+    // Scroll to top when component mounts
+    useEffect(() => {
+        // Use instant scroll to prevent any visual jump
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        // Also ensure the page starts at the top
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+    }, []);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;

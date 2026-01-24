@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using WP25G20.Data;
 using WP25G20.DTOs;
@@ -10,11 +11,13 @@ namespace WP25G20.Services
     {
         private readonly IInvoiceRepository _invoiceRepository;
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public InvoiceService(IInvoiceRepository invoiceRepository, ApplicationDbContext context)
+        public InvoiceService(IInvoiceRepository invoiceRepository, ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _invoiceRepository = invoiceRepository;
             _context = context;
+            _userManager = userManager;
         }
 
         public async Task<PagedResultDTO<InvoiceDTO>> GetAllAsync(FilterDTO filter, string? userId, bool isAdmin)
@@ -27,7 +30,17 @@ namespace WP25G20.Services
 
             if (!isAdmin && !string.IsNullOrEmpty(userId))
             {
-                query = query.Where(i => i.CreatedById == userId);
+                // For clients, show invoices where Client.Email matches their email
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user != null && !string.IsNullOrEmpty(user.Email))
+                {
+                    query = query.Where(i => i.Client.Email.ToLower() == user.Email.ToLower());
+                }
+                else
+                {
+                    // Fallback: show invoices created by this user
+                    query = query.Where(i => i.CreatedById == userId);
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
@@ -70,9 +83,21 @@ namespace WP25G20.Services
             var invoice = await _invoiceRepository.GetByIdAsync(id);
             if (invoice == null) return null;
 
-            if (!isAdmin && !string.IsNullOrEmpty(userId) && invoice.CreatedById != userId)
+            if (!isAdmin && !string.IsNullOrEmpty(userId))
             {
-                throw new UnauthorizedAccessException("You don't have permission to access this invoice.");
+                // For clients, check if Client.Email matches their email
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user != null && !string.IsNullOrEmpty(user.Email))
+                {
+                    if (invoice.Client.Email.ToLower() != user.Email.ToLower())
+                    {
+                        throw new UnauthorizedAccessException("You don't have permission to access this invoice.");
+                    }
+                }
+                else if (invoice.CreatedById != userId)
+                {
+                    throw new UnauthorizedAccessException("You don't have permission to access this invoice.");
+                }
             }
 
             return MapToDTO(invoice);
@@ -84,7 +109,16 @@ namespace WP25G20.Services
             
             if (!isAdmin && !string.IsNullOrEmpty(userId))
             {
-                invoices = invoices.Where(i => i.CreatedById == userId);
+                // For clients, check if Client.Email matches their email
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user != null && !string.IsNullOrEmpty(user.Email))
+                {
+                    invoices = invoices.Where(i => i.Client.Email.ToLower() == user.Email.ToLower());
+                }
+                else
+                {
+                    invoices = invoices.Where(i => i.CreatedById == userId);
+                }
             }
 
             return invoices.Select(MapToDTO);
@@ -206,6 +240,63 @@ namespace WP25G20.Services
             }
 
             return true;
+        }
+
+        public async Task<IEnumerable<InvoiceDTO>> EnsureInvoicesForCampaignsAsync(string? userId, bool isAdmin)
+        {
+            // Get all campaigns
+            var campaignsQuery = _context.Campaigns
+                .Include(c => c.Client)
+                .Include(c => c.Invoices)
+                .AsQueryable();
+
+            // Filter by client email if user is a client
+            if (!isAdmin && !string.IsNullOrEmpty(userId))
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user != null && !string.IsNullOrEmpty(user.Email))
+                {
+                    campaignsQuery = campaignsQuery.Where(c => c.Client.Email.ToLower() == user.Email.ToLower());
+                }
+            }
+
+            var campaigns = await campaignsQuery.ToListAsync();
+            var createdInvoices = new List<Invoice>();
+
+            foreach (var campaign in campaigns)
+            {
+                // Check if campaign already has an invoice
+                if (campaign.Invoices != null && campaign.Invoices.Any())
+                {
+                    continue; // Campaign already has an invoice
+                }
+
+                // Create invoice for this campaign using the budget as the amount
+                var invoiceNumber = await _invoiceRepository.GenerateInvoiceNumberAsync();
+                
+                // Calculate due date (30 days from now)
+                var dueDate = DateTime.UtcNow.AddDays(30);
+
+                var invoice = new Invoice
+                {
+                    InvoiceNumber = invoiceNumber,
+                    ClientId = campaign.ClientId,
+                    CampaignId = campaign.Id,
+                    Amount = campaign.Budget,
+                    TaxAmount = 0, // No tax by default, can be added later
+                    TotalAmount = campaign.Budget,
+                    Status = InvoiceStatus.Sent, // Mark as sent so client can see it
+                    IssueDate = DateTime.UtcNow,
+                    DueDate = dueDate,
+                    Notes = $"Invoice for campaign: {campaign.Name}",
+                    CreatedById = userId
+                };
+
+                var createdInvoice = await _invoiceRepository.CreateAsync(invoice);
+                createdInvoices.Add(createdInvoice);
+            }
+
+            return createdInvoices.Select(MapToDTO);
         }
 
         private InvoiceDTO MapToDTO(Invoice invoice)

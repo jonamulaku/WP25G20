@@ -52,6 +52,10 @@ const styles = `
     from { opacity: 0; transform: translateX(30px); }
     to { opacity: 1; transform: translateX(0); }
   }
+  @keyframes fade-in-left {
+    from { opacity: 0; transform: translateX(-30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
   @keyframes bounce-subtle {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-10px); }
@@ -72,11 +76,55 @@ const styles = `
     from { opacity: 0; transform: translateY(40px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes rotate-in {
+    from { opacity: 0; transform: rotate(-5deg) scale(0.95); }
+    to { opacity: 1; transform: rotate(0) scale(1); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+  @keyframes glow {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+  }
+  @keyframes rotate-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes slide-in-left {
+    from { opacity: 0; transform: translateX(-50px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(50px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes zoom-in {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes wave {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(5deg); }
+  }
+  @keyframes particle-float {
+    0%, 100% { transform: translateY(0px) translateX(0px); }
+    33% { transform: translateY(-30px) translateX(20px); }
+    66% { transform: translateY(10px) translateX(-20px); }
+  }
   .animate-fade-in {
     animation: fade-in 0.8s ease-out;
   }
   .animate-fade-in-right {
     animation: fade-in-right 1s ease-out;
+  }
+  .animate-fade-in-left {
+    animation: fade-in-left 1s ease-out;
   }
   .animate-bounce-subtle {
     animation: bounce-subtle 3s ease-in-out infinite;
@@ -93,6 +141,53 @@ const styles = `
   }
   .animate-slide-up {
     animation: slide-up 0.8s ease-out forwards;
+  }
+  .animate-scale-in {
+    animation: scale-in 0.6s ease-out forwards;
+  }
+  .animate-rotate-in {
+    animation: rotate-in 0.7s ease-out forwards;
+  }
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    background-size: 1000px 100%;
+    animation: shimmer 3s infinite;
+  }
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
+  }
+  .animate-rotate-slow {
+    animation: rotate-slow 20s linear infinite;
+  }
+  .animate-slide-in-left {
+    animation: slide-in-left 0.8s ease-out forwards;
+  }
+  .animate-slide-in-right {
+    animation: slide-in-right 0.8s ease-out forwards;
+  }
+  .animate-zoom-in {
+    animation: zoom-in 0.6s ease-out forwards;
+  }
+  .animate-wave {
+    animation: wave 3s ease-in-out infinite;
+  }
+  .animate-particle-float {
+    animation: particle-float 8s ease-in-out infinite;
+  }
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+  .scroll-reveal.revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 `;
 
@@ -370,10 +465,10 @@ function StatsSection() {
 
   return (
     <section className="py-24 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-200/20 rounded-full blur-3xl animate-pulse-glow" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1s' }} />
+      {/* Simple Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-200/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl" />
       </div>
 
       <div className="container mx-auto px-6 lg:px-24 xl:px-32 relative z-10">
@@ -381,14 +476,14 @@ function StatsSection() {
           {stats.map((stat, index) => (
             <div
               key={index}
-              className="group relative bg-white rounded-3xl p-8 lg:p-10 border-2 border-slate-200
-                       hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50
-                       transition-all duration-500 hover:-translate-y-2"
+              className="group relative bg-white rounded-2xl p-5 lg:p-6 border-2 border-slate-200
+                       hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50
+                       transition-all duration-300 hover:-translate-y-1 scroll-reveal"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               {/* Background Gradient on Hover */}
               <div className={`absolute inset-0 bg-gradient-to-br ${stat.bgGradient} opacity-0 
-                             group-hover:opacity-100 rounded-3xl transition-opacity duration-500`} />
+                             group-hover:opacity-100 rounded-2xl transition-opacity duration-300`} />
 
               {/* Content */}
               <div className="relative z-10">
@@ -396,10 +491,7 @@ function StatsSection() {
                 <div className="mb-6">
                   <div className={`relative w-16 h-16 rounded-2xl bg-gradient-to-br ${stat.gradient}
                                flex items-center justify-center shadow-lg
-                               group-hover:scale-110 group-hover:rotate-6 transition-all duration-500
-                               animate-float`}
-                    style={{ animationDelay: `${index * 0.2}s` }}>
-                    <div className="absolute inset-0 bg-white/30 rounded-2xl blur-xl group-hover:bg-white/40 transition-colors" />
+                               group-hover:scale-105 transition-all duration-300`}>
                     <stat.icon className="text-white relative z-10" size={32} strokeWidth={2.5} />
                   </div>
                 </div>
@@ -473,6 +565,27 @@ export default function Home() {
     };
   }, []);
 
+  // Scroll reveal animation
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+    );
+
+    const elements = document.querySelectorAll('.scroll-reveal');
+    elements.forEach((el) => observer.observe(el));
+
+    return () => {
+      elements.forEach((el) => observer.unobserve(el));
+    };
+  }, []);
+
   return (
     <>
       <style>{styles}</style>
@@ -484,13 +597,13 @@ export default function Home() {
           <div className="container mx-auto px-6 lg:px-24 xl:px-32 py-20 lg:py-32 relative z-10">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               {/* LEFT */}
-              <div className="space-y-8 animate-fade-in">
-                <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-md rounded-full text-white text-sm font-semibold border border-white/30 shadow-lg hover:bg-white/25 transition-all duration-300">
+              <div className="space-y-8 relative z-10">
+                <div className="inline-flex items-center gap-2 px-5 py-2.5 glass-effect rounded-full text-white text-sm font-semibold shadow-xl hover:bg-white/30 hover:scale-105 transition-all duration-300 animate-fade-in">
                   <TrendingUp size={16} className="shrink-0" />
                   <span>Innovation Driven</span>
                 </div>
 
-                <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold leading-[1.1] text-white tracking-tight">
+                <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold leading-[1.1] text-white tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>
                   We Turn Marketing Into
                   <br />
                   <span className="bg-gradient-to-r from-emerald-100 via-white to-emerald-100 bg-clip-text text-transparent">
@@ -498,7 +611,7 @@ export default function Home() {
                   </span>
                 </h1>
 
-                <p className="text-xl lg:text-2xl text-emerald-50/95 leading-relaxed max-w-xl font-light">
+                <p className="text-xl lg:text-2xl text-emerald-50/95 leading-relaxed max-w-xl font-light animate-fade-in" style={{ animationDelay: '0.2s' }}>
                   Transform your vision into reality with our strategic approach. We combine innovation, expertise, and creativity to
                   deliver exceptional results that drive growth and success.
                 </p>
@@ -582,6 +695,7 @@ export default function Home() {
               <div className="relative lg:block hidden animate-fade-in-right">
                 <div className="relative group">
                   <div className="absolute -inset-6 bg-white/30 rounded-3xl blur-3xl opacity-60 group-hover:opacity-80 transition-opacity duration-500"></div>
+                  
                   <div className="relative rounded-3xl overflow-hidden shadow-2xl group-hover:shadow-emerald-200/50 transition-shadow duration-500">
                     <img
                       src={HeroImage}
@@ -591,13 +705,14 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="absolute -bottom-8 -right-8 bg-white rounded-2xl shadow-2xl p-6 border border-slate-100 hover:scale-105 transition-transform duration-300">
+                {/* Stats Card */}
+                <div className="absolute -bottom-8 -right-8 bg-white rounded-2xl shadow-2xl p-4 border border-slate-100 hover:scale-105 transition-all duration-300 animate-float">
                   <div className="flex items-center gap-3">
                     <div className="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center shadow-lg">
                       <Award className="text-emerald-700" size={26} />
                     </div>
                     <div>
-                      <div className="text-2xl font-extrabold text-slate-900">100%</div>
+                      <div className="text-2xl font-extrabold text-slate-900 bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent">100%</div>
                       <div className="text-xs text-slate-600 font-semibold">Repeat Client Rate</div>
                     </div>
                   </div>
@@ -623,14 +738,14 @@ export default function Home() {
                 return (
                   <div
                     key={index}
-                    className="group flex flex-col items-center justify-center p-7 bg-gradient-to-br from-slate-50 to-white rounded-2xl
+                    className="group flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-white rounded-2xl
                              hover:from-emerald-50 hover:to-white hover:shadow-xl transition-all duration-500 border border-slate-200 hover:border-emerald-300
-                             hover:-translate-y-1"
+                             hover:-translate-y-1 scroll-reveal"
                   >
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mb-4 
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mb-3 
                                  group-hover:from-emerald-100 group-hover:to-emerald-200 group-hover:scale-105
                                  transition-all duration-300 shadow-sm group-hover:shadow-md">
-                      <IconComponent className="text-emerald-700" size={26} />
+                      <IconComponent className="text-emerald-700" size={22} />
                     </div>
                     <div className="text-center">
                       <div className="text-sm font-bold text-slate-900 mb-1.5 group-hover:text-emerald-700 transition-colors">
@@ -654,6 +769,12 @@ export default function Home() {
 
         {/* ================= SERVICES ================= */}
         <section className="py-24 bg-gradient-to-b from-white via-slate-50 to-white relative overflow-hidden">
+          {/* Simple Background */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-50/30 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-50/20 rounded-full blur-3xl"></div>
+          </div>
+          
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-5" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%2310b981' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E")`,
@@ -667,12 +788,12 @@ export default function Home() {
               desc="We provide comprehensive digital marketing, design, and analytics services to help your business grow"
             />
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
               {services.map((item, index) => (
                 <div
                   key={index}
-                  className="group relative rounded-3xl overflow-hidden
-                           transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02]"
+                  className="group relative rounded-2xl overflow-hidden
+                           transition-all duration-300 hover:-translate-y-1 hover:shadow-xl scroll-reveal"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   {/* Background Image with Overlay */}
@@ -680,17 +801,17 @@ export default function Home() {
                     <img
                       src={item.image}
                       alt={item.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} group-hover:opacity-80 transition-opacity duration-500`} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} group-hover:opacity-80 transition-opacity duration-300`} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20" />
                   </div>
 
                   {/* Content */}
-                  <div className="relative z-10 p-8 min-h-[600px] flex flex-col">
+                  <div className="relative z-10 p-4 lg:p-5 min-h-[350px] flex flex-col scroll-reveal">
                     {/* Icon with Animation */}
-                    <div className="mb-6">
-                      <div className={`relative w-20 h-20 rounded-2xl bg-gradient-to-br ${item.iconBg} 
+                    <div className="mb-4">
+                      <div className={`relative w-16 h-16 rounded-2xl bg-gradient-to-br ${item.iconBg} 
                                    flex items-center justify-center shadow-2xl
                                    group-hover:scale-110 group-hover:rotate-6 transition-all duration-500
                                    animate-float`}
@@ -699,43 +820,43 @@ export default function Home() {
                         <img
                           src={item.icon}
                           alt={item.title}
-                          className="w-12 h-12 relative z-10 filter brightness-0 invert"
+                          className="w-10 h-10 relative z-10 filter brightness-0 invert"
                         />
                       </div>
                     </div>
 
                     {/* Stat Badge */}
-                    <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md rounded-full border border-white/30">
-                      <div className="text-2xl font-extrabold text-white">{item.stat}</div>
-                      <div className="text-xs text-white/90 font-medium">{item.statLabel}</div>
+                    <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 bg-white/25 backdrop-blur-md rounded-full border border-white/40 shadow-lg">
+                      <div className="text-xl font-extrabold text-white">{item.stat}</div>
+                      <div className="text-xs text-white font-medium">{item.statLabel}</div>
                     </div>
 
                     {/* Title */}
-                    <h3 className="text-2xl lg:text-3xl font-extrabold text-white mb-4 leading-tight group-hover:text-emerald-100 transition-colors">
+                    <h3 className="text-xl lg:text-2xl font-extrabold text-white mb-3 leading-tight group-hover:text-emerald-100 transition-colors drop-shadow-lg">
                       {item.title}
                     </h3>
 
                     {/* Description */}
-                    <p className="text-white/90 leading-relaxed mb-6 text-base font-light flex-1">
+                    <p className="text-white leading-relaxed mb-4 text-sm font-light flex-1 drop-shadow-md">
                       {item.desc}
                     </p>
 
                     {/* Features List */}
-                    <ul className="space-y-3 mb-6">
+                    <ul className="space-y-2 mb-4">
                       {item.features.map((feature, i) => (
                         <li
                           key={i}
-                          className="flex items-center gap-3 text-sm text-white/95 font-medium
-                                   group-hover:text-white transition-colors
-                                   animate-slide-up"
+                          className="flex items-center gap-2.5 text-xs text-white font-medium
+                                   group-hover:text-emerald-100 transition-colors
+                                   animate-slide-up drop-shadow-sm"
                           style={{ animationDelay: `${(index * 0.1) + (i * 0.05)}s` }}
                         >
-                          <div className="w-6 h-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center 
-                                       group-hover:bg-emerald-500/50 transition-all duration-300
-                                       group-hover:scale-110">
-                            <CheckCircle2 className="text-white shrink-0" size={14} strokeWidth={3} />
+                          <div className="w-5 h-5 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center 
+                                       group-hover:bg-emerald-500/60 transition-all duration-300
+                                       group-hover:scale-110 shadow-md">
+                            <CheckCircle2 className="text-white shrink-0" size={12} strokeWidth={3} />
                           </div>
-                          <span>{feature}</span>
+                          <span className="font-semibold">{feature}</span>
                         </li>
                       ))}
                     </ul>
@@ -821,7 +942,7 @@ export default function Home() {
                   return (
                     <div
                       key={index}
-                      className="relative group"
+                      className="relative group scroll-reveal"
                       style={{ animationDelay: `${index * 0.15}s` }}
                     >
                       {/* Connecting Arrow (Desktop Only) */}
@@ -840,36 +961,36 @@ export default function Home() {
                                      opacity-0 group-hover:opacity-40 transition-opacity duration-500`} />
 
                         {/* Main Card */}
-                        <div className={`relative bg-white rounded-3xl p-8 lg:p-10 
+                        <div className={`relative bg-white rounded-2xl p-5 lg:p-6 
                                      border-2 border-slate-200 hover:border-emerald-300 
-                                     hover:shadow-2xl hover:shadow-emerald-100/50
-                                     transition-all duration-500 h-full hover:-translate-y-2
-                                     group-hover:scale-[1.02]`}>
+                                     hover:shadow-xl hover:shadow-emerald-100/50
+                                     transition-all duration-500 h-full hover:-translate-y-1
+                                     group-hover:scale-[1.01] scroll-reveal`}>
                           {/* Content */}
                           <div className="relative z-10">
                             {/* Icon */}
-                            <div className="mb-6">
-                              <div className={`relative w-20 h-20 rounded-2xl bg-white/80 backdrop-blur-sm
+                            <div className="mb-4">
+                              <div className={`relative w-16 h-16 rounded-xl bg-white/80 backdrop-blur-sm
                                            flex items-center justify-center shadow-xl
                                            group-hover:scale-110 group-hover:rotate-12
                                            transition-all duration-500
                                            border-2 border-white/50 group-hover:border-white`}>
                                 <div className={`absolute inset-0 bg-gradient-to-br ${gradients[index]} 
-                                             rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity`} />
+                                             rounded-xl opacity-0 group-hover:opacity-10 transition-opacity`} />
                                 <step.icon className={`${iconColors[index]} relative z-10 group-hover:scale-110 
-                                                    transition-transform duration-300`} size={36} strokeWidth={2} />
+                                                    transition-transform duration-300`} size={28} strokeWidth={2} />
                               </div>
                             </div>
 
                             {/* Title */}
-                            <h3 className={`text-2xl font-extrabold mb-4 leading-tight
+                            <h3 className={`text-xl font-extrabold mb-3 leading-tight
                                          ${index === 0 ? 'text-amber-900' : index === 1 ? 'text-emerald-900' : index === 2 ? 'text-blue-900' : 'text-purple-900'}
                                          group-hover:scale-105 transition-transform duration-300`}>
                               {step.title}
                             </h3>
 
                             {/* Description */}
-                            <p className="text-slate-700 leading-relaxed text-base font-light mb-6">
+                            <p className="text-slate-700 leading-relaxed text-sm font-light">
                               {step.desc}
                             </p>
 
@@ -918,12 +1039,12 @@ export default function Home() {
               {successStories.map((story) => (
                 <div
                   key={story.id}
-                  className="group relative bg-white rounded-3xl overflow-hidden border border-slate-200
-                           hover:border-emerald-300 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 flex flex-col
-                           shadow-md hover:shadow-emerald-100/50"
+                  className="group relative bg-white rounded-2xl overflow-hidden border border-slate-200
+                           hover:border-emerald-300 hover:shadow-xl transition-all duration-500 hover:-translate-y-1 flex flex-col
+                           shadow-md hover:shadow-emerald-100/50 scroll-reveal"
                 >
                   {/* Image */}
-                  <div className="relative h-64 overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+                  <div className="relative h-48 overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent z-10 group-hover:from-black/70 transition-all duration-500" />
                     <img
                       src={story.image}
@@ -941,7 +1062,7 @@ export default function Home() {
                   </div>
 
                   {/* Content */}
-                  <div className="p-7 flex-1 flex flex-col">
+                  <div className="p-5 flex-1 flex flex-col">
                     <h3 className="text-xl lg:text-2xl font-bold text-slate-900 mb-3 group-hover:text-emerald-700 transition-colors leading-tight">
                       {story.title}
                     </h3>
@@ -1002,9 +1123,9 @@ export default function Home() {
               {testimonials.map((testimonial) => (
                 <div
                   key={testimonial.id}
-                  className="group bg-white rounded-2xl p-6 border-2 border-slate-200
+                  className="group bg-white rounded-2xl p-5 border-2 border-slate-200
                            hover:border-emerald-300 hover:shadow-xl transition-all duration-500 flex flex-col
-                           hover:-translate-y-2"
+                           hover:-translate-y-1 scroll-reveal"
                 >
                   {/* Client Photo & Info */}
                   <div className="flex items-center gap-3 mb-5">

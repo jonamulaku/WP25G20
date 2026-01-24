@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using WP25G20.Data;
@@ -12,15 +13,18 @@ namespace WP25G20.Services
         private readonly IPaymentRepository _paymentRepository;
         private readonly IInvoiceRepository _invoiceRepository;
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
         public PaymentService(
             IPaymentRepository paymentRepository,
             IInvoiceRepository invoiceRepository,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager)
         {
             _paymentRepository = paymentRepository;
             _invoiceRepository = invoiceRepository;
             _context = context;
+            _userManager = userManager;
         }
 
         public async Task<PagedResultDTO<PaymentDTO>> GetAllAsync(FilterDTO filter, string? userId, bool isAdmin)
@@ -120,6 +124,21 @@ namespace WP25G20.Services
             if (invoice == null)
                 throw new InvalidOperationException("Invoice not found.");
 
+            // Check if user is client and verify they own this invoice
+            var user = await _userManager.FindByIdAsync(userId);
+            var userRoles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
+            var isClient = userRoles.Contains("Client");
+            var isAdmin = userRoles.Contains("Admin");
+
+            if (isClient && !isAdmin)
+            {
+                // Verify client owns this invoice
+                if (user == null || invoice.Client.Email.ToLower() != user.Email.ToLower())
+                {
+                    throw new UnauthorizedAccessException("You don't have permission to create payment for this invoice.");
+                }
+            }
+
             if (invoice.Status == InvoiceStatus.Paid)
                 throw new InvalidOperationException("Invoice is already paid.");
 
@@ -140,23 +159,31 @@ namespace WP25G20.Services
             if (!Enum.TryParse<PaymentMethod>(dto.Method, out var method))
                 throw new InvalidOperationException("Invalid payment method.");
 
+            // If client is paying, mark as completed immediately (online payment)
+            var isClientPaying = isClient && !isAdmin;
+            var paymentStatus = isClientPaying ? PaymentStatus.Completed : PaymentStatus.Pending;
+            var processedDate = isClientPaying ? DateTime.UtcNow : (DateTime?)null;
+            var processedById = isClientPaying ? userId : (string?)null;
+
             var payment = new Payment
             {
                 InvoiceId = dto.InvoiceId,
                 PaymentNumber = paymentNumber,
                 Amount = dto.Amount,
                 Method = method,
-                Status = PaymentStatus.Pending,
+                Status = paymentStatus,
                 TransactionId = dto.TransactionId,
                 PaymentReference = dto.PaymentReference,
                 PaymentDate = DateTime.UtcNow,
+                ProcessedDate = processedDate,
+                ProcessedById = processedById,
                 Notes = dto.Notes
             };
 
             var createdPayment = await _paymentRepository.CreateAsync(payment);
 
             // If payment completes the invoice, mark invoice as paid
-            var newTotalPaid = totalPaid + dto.Amount;
+            var newTotalPaid = totalPaid + (paymentStatus == PaymentStatus.Completed ? dto.Amount : 0);
             if (newTotalPaid >= invoice.TotalAmount && invoice.Status != InvoiceStatus.Paid)
             {
                 invoice.Status = InvoiceStatus.Paid;

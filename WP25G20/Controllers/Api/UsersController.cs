@@ -36,9 +36,19 @@ namespace WP25G20.Controllers.Api
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<UserDTO>> Update(string id, [FromBody] UserUpdateDTO dto)
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(currentUserId)) return Unauthorized();
+
+            var isAdmin = User.IsInRole("Admin");
+            
+            // Non-admin users can only update their own profile
+            if (!isAdmin && currentUserId != id)
+            {
+                return Forbid("You can only update your own profile.");
+            }
+
             try
             {
                 var user = await _userService.UpdateAsync(id, dto);
@@ -91,6 +101,24 @@ namespace WP25G20.Controllers.Api
             var user = await _userService.GetByIdAsync(userId);
             if (user == null) return NotFound();
             return Ok(user);
+        }
+
+        [HttpPut("me")]
+        public async Task<ActionResult<UserDTO>> UpdateCurrentUser([FromBody] UserUpdateDTO dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            try
+            {
+                var user = await _userService.UpdateAsync(userId, dto);
+                if (user == null) return NotFound();
+                return Ok(user);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

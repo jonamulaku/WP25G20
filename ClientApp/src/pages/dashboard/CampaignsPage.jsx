@@ -121,54 +121,91 @@ export default function CampaignsPage() {
                 return;
             }
 
-            // Find a service that matches the pricing package name
-            // Try exact match first, then case-insensitive, then partial
-            let matchingService = services.find(s => 
-                s.name.toLowerCase() === selectedPackage.name.toLowerCase()
-            );
-            
-            if (!matchingService) {
-                matchingService = services.find(s => 
-                    s.name.toLowerCase().includes(selectedPackage.name.toLowerCase()) ||
-                    selectedPackage.name.toLowerCase().includes(s.name.toLowerCase())
-                );
-            }
+            let serviceId = null;
 
-            // For both create and update, we need a valid serviceId
-            // If service doesn't exist, create it automatically
-            if (!matchingService) {
-                try {
-                    // Auto-create the service matching the pricing package
-                    const newService = await servicesAPI.create({
-                        name: selectedPackage.name,
-                        description: `Pricing package: ${selectedPackage.name} - ${selectedPackage.price} ${selectedPackage.period}`,
-                        deliverables: `Includes all services for ${selectedPackage.name} package`,
-                        basePrice: parseFloat(selectedPackage.price.replace(/[^0-9.]/g, '')) || 0,
-                        pricingType: "Monthly",
-                        isActive: true
-                    });
-                    matchingService = newService;
-                    // Refresh services list
-                    const servicesRes = await servicesAPI.getAll({ pageSize: 1000 });
-                    setServices(servicesRes.items || []);
-                } catch (error) {
-                    console.error('Error creating service:', error);
-                    alert(`Failed to create service "${selectedPackage.name}". Please create it manually in the Services page first.`);
-                    return;
+            // If editing and campaign already has a serviceId, check if pricing package changed
+            if (editingCampaign && editingCampaign.serviceId) {
+                // Check if the pricing package matches the existing service
+                const existingService = services.find(s => s.id === editingCampaign.serviceId);
+                if (existingService) {
+                    // Check if the service name matches the selected package
+                    const serviceMatchesPackage = 
+                        existingService.name.toLowerCase() === selectedPackage.name.toLowerCase() ||
+                        existingService.name.toLowerCase().includes(selectedPackage.name.toLowerCase()) ||
+                        selectedPackage.name.toLowerCase().includes(existingService.name.toLowerCase());
+                    
+                    if (serviceMatchesPackage) {
+                        // Use existing serviceId if it matches
+                        serviceId = editingCampaign.serviceId;
+                    }
                 }
             }
 
+            // If we don't have a serviceId yet, find or create one
+            if (!serviceId) {
+                // Find a service that matches the pricing package name
+                // Try exact match first, then case-insensitive, then partial
+                let matchingService = services.find(s => 
+                    s.name.toLowerCase() === selectedPackage.name.toLowerCase()
+                );
+                
+                if (!matchingService) {
+                    matchingService = services.find(s => 
+                        s.name.toLowerCase().includes(selectedPackage.name.toLowerCase()) ||
+                        selectedPackage.name.toLowerCase().includes(s.name.toLowerCase())
+                    );
+                }
+
+                // If service doesn't exist, create it automatically
+                if (!matchingService) {
+                    try {
+                        // Auto-create the service matching the pricing package
+                        const newService = await servicesAPI.create({
+                            name: selectedPackage.name,
+                            description: `Pricing package: ${selectedPackage.name} - ${selectedPackage.price} ${selectedPackage.period}`,
+                            deliverables: `Includes all services for ${selectedPackage.name} package`,
+                            basePrice: parseFloat(selectedPackage.price.replace(/[^0-9.]/g, '')) || 0,
+                            pricingType: "Monthly",
+                            isActive: true
+                        });
+                        matchingService = newService;
+                        // Refresh services list
+                        const servicesRes = await servicesAPI.getAll({ pageSize: 1000 });
+                        setServices(servicesRes.items || []);
+                    } catch (error) {
+                        console.error('Error creating service:', error);
+                        alert(`Failed to create service "${selectedPackage.name}". Please create it manually in the Services page first.`);
+                        return;
+                    }
+                }
+
+                serviceId = matchingService.id;
+            }
+
+            // Validate serviceId is valid
+            if (!serviceId || serviceId === 0) {
+                alert('Invalid service. Please select a valid pricing package.');
+                return;
+            }
+
+            // Validate clientId is valid
+            const parsedClientId = parseInt(formData.clientId);
+            if (!parsedClientId || isNaN(parsedClientId)) {
+                alert('Please select a valid client.');
+                return;
+            }
+
             const submitData = {
-                ...formData,
-                clientId: parseInt(formData.clientId),
-                serviceId: matchingService.id,
+                name: formData.name,
+                description: formData.description || "",
+                clientId: parsedClientId,
+                serviceId: serviceId,
                 budget: parseFloat(formData.budget) || 0,
                 startDate: new Date(formData.startDate).toISOString(),
-                endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null
+                endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
+                notes: formData.notes || "",
+                status: formData.status || "Planning"
             };
-            
-            // Remove pricingPackageId as backend doesn't need it
-            delete submitData.pricingPackageId;
 
             if (editingCampaign) {
                 await campaignsAPI.update(editingCampaign.id, submitData);
@@ -185,13 +222,16 @@ export default function CampaignsPage() {
 
     const handleStatusChange = async (campaign, newStatus) => {
         try {
+            // Include all required fields for the update
             await campaignsAPI.update(campaign.id, {
                 name: campaign.name,
-                description: campaign.description,
+                description: campaign.description || "",
+                serviceId: campaign.serviceId, // Required field
+                clientId: campaign.clientId, // Required for validation
                 startDate: campaign.startDate,
-                endDate: campaign.endDate,
-                budget: campaign.budget,
-                notes: campaign.notes,
+                endDate: campaign.endDate || null,
+                budget: campaign.budget || 0,
+                notes: campaign.notes || "",
                 status: newStatus
             });
             await fetchData();

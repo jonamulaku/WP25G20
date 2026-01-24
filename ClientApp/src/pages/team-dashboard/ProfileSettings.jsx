@@ -7,11 +7,10 @@ import {
     Briefcase,
     Settings,
     Bell,
-    Moon,
-    Sun,
     Globe,
     Save,
-    Camera
+    Camera,
+    CheckCircle2
 } from "lucide-react";
 import { usersAPI, teamMembersAPI } from "../../services/api";
 
@@ -35,7 +34,6 @@ export default function ProfileSettings() {
             statusChanges: true
         },
         defaultDashboardView: "dashboard",
-        themeMode: "light",
         language: "en"
     });
     const [loading, setLoading] = useState(false);
@@ -58,20 +56,44 @@ export default function ProfileSettings() {
     };
 
     const handlePreferenceChange = (category, field, value) => {
-        setPreferences(prev => ({
-            ...prev,
-            [category]: {
-                ...prev[category],
-                [field]: value
-            }
-        }));
+        if (category && field) {
+            // For nested objects like notifications
+            setPreferences(prev => ({
+                ...prev,
+                [category]: {
+                    ...prev[category],
+                    [field]: value
+                }
+            }));
+        } else {
+            // For top-level properties like defaultDashboardView, language
+            setPreferences(prev => ({
+                ...prev,
+                [category || field]: value
+            }));
+        }
     };
 
     const handleSaveProfile = async () => {
         try {
             setLoading(true);
-            // In a real app, this would update the team member profile via API
-            // await teamMembersAPI.update(teamMemberInfo.id, profile);
+            // Save profile to localStorage
+            localStorage.setItem('teamMemberProfile', JSON.stringify(profile));
+            
+            // In a real app, this would also update the team member profile via API
+            if (teamMemberInfo?.id) {
+                try {
+                    await teamMembersAPI.update(teamMemberInfo.id, {
+                        firstName: profile.firstName,
+                        lastName: profile.lastName,
+                        phone: profile.phone,
+                        description: profile.skills.join(', ')
+                    });
+                } catch (apiError) {
+                    console.error("API update failed, but saved locally:", apiError);
+                }
+            }
+            
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
         } catch (error) {
@@ -83,9 +105,15 @@ export default function ProfileSettings() {
     };
 
     const handleSavePreferences = () => {
-        localStorage.setItem('userPreferences', JSON.stringify(preferences));
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
+        try {
+            // Save preferences to localStorage
+            localStorage.setItem('userPreferences', JSON.stringify(preferences));
+            setSaved(true);
+            setTimeout(() => setSaved(false), 3000);
+        } catch (error) {
+            console.error("Error saving preferences:", error);
+            alert("Failed to save preferences");
+        }
     };
 
     return (
@@ -216,11 +244,18 @@ export default function ProfileSettings() {
                         <button
                             onClick={handleSaveProfile}
                             disabled={loading}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-all"
                         >
                             <Save size={18} />
-                            <span>Save Profile</span>
+                            <span>{loading ? "Saving..." : "Save Profile"}</span>
                         </button>
+                        
+                        {saved && (
+                            <div className="p-3 bg-emerald-900/30 border border-emerald-600/50 text-emerald-300 rounded-lg text-sm text-center flex items-center justify-center gap-2">
+                                <CheckCircle2 size={16} />
+                                <span>Profile saved successfully!</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -270,23 +305,6 @@ export default function ProfileSettings() {
                             </select>
                         </div>
 
-                        {/* Theme Mode */}
-                        <div>
-                            <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-                                {preferences.themeMode === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
-                                Theme Mode
-                            </h3>
-                            <select
-                                value={preferences.themeMode}
-                                onChange={(e) => handlePreferenceChange('themeMode', null, e.target.value)}
-                                className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            >
-                                <option value="light">Light</option>
-                                <option value="dark">Dark</option>
-                                <option value="auto">Auto</option>
-                            </select>
-                        </div>
-
                         {/* Language */}
                         <div>
                             <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
@@ -307,15 +325,16 @@ export default function ProfileSettings() {
 
                         <button
                             onClick={handleSavePreferences}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all"
                         >
                             <Save size={18} />
                             <span>Save Preferences</span>
                         </button>
 
                         {saved && (
-                            <div className="p-3 bg-emerald-900/30 text-emerald-300 rounded-lg text-sm text-center">
-                                Settings saved successfully!
+                            <div className="p-3 bg-emerald-900/30 border border-emerald-600/50 text-emerald-300 rounded-lg text-sm text-center flex items-center justify-center gap-2">
+                                <CheckCircle2 size={16} />
+                                <span>Settings saved successfully!</span>
                             </div>
                         )}
                     </div>

@@ -257,15 +257,15 @@ export default function Team() {
             {filteredMembers.map((member) => (
               <div
                 key={member.id}
-                className="group relative bg-white rounded-3xl overflow-hidden border-2 border-slate-200
-                           hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/50 
-                           transition-all duration-500 hover:-translate-y-3"
+                className="group relative bg-white rounded-2xl overflow-hidden border-2 border-slate-200
+                           hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50 
+                           transition-all duration-500 hover:-translate-y-2"
               >
                 {/* Glow Effect */}
-                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-3xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500"></div>
+                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500"></div>
                 
                 <div className="relative">
-                  <div className="relative h-80 overflow-hidden">
+                  <div className="relative h-64 overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent z-10 group-hover:from-black/80 transition-all duration-700"></div>
                     <img 
                       src={member.image} 
@@ -279,12 +279,12 @@ export default function Team() {
                   </div>
                 </div>
 
-                  <div className="p-8">
-                    <h3 className="text-xl lg:text-2xl font-extrabold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors leading-tight">
+                  <div className="p-6">
+                    <h3 className="text-lg lg:text-xl font-extrabold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors leading-tight">
                     {member.name}
                   </h3>
-                    <p className="text-sm text-emerald-600 font-bold mb-4">{member.role}</p>
-                    <p className="text-sm text-slate-600 mb-6 leading-relaxed font-light line-clamp-3">{member.bio}</p>
+                    <p className="text-sm text-emerald-600 font-bold mb-3">{member.role}</p>
+                    <p className="text-sm text-slate-600 mb-5 leading-relaxed font-light line-clamp-3">{member.bio}</p>
 
                     <div className="flex items-center gap-3 pt-6 border-t border-slate-100 group-hover:border-emerald-100 transition-colors">
                     <a
@@ -337,7 +337,7 @@ export default function Team() {
 
         <div className="container mx-auto px-6 lg:px-24 xl:px-32 relative z-10">
           <div className="max-w-4xl mx-auto">
-            <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-12 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
               <div className="text-center mb-8">
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full text-white text-sm font-medium mb-4">
                   <Rocket size={16} className="shrink-0" />
@@ -418,7 +418,7 @@ export default function Team() {
                 {openPositions.map((position) => (
                   <div
                     key={position.id}
-                    className="group bg-gradient-to-br from-slate-50 to-white rounded-2xl p-8 border-2 border-slate-200
+                    className="group bg-gradient-to-br from-slate-50 to-white rounded-2xl p-6 border-2 border-slate-200
                              hover:border-emerald-300 hover:shadow-xl transition-all duration-300"
                   >
                     <div className="flex items-start justify-between mb-6">

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, CheckCircle2, Clock, AlertCircle, User, Edit, Trash2, X, Save, CheckSquare } from "lucide-react";
-import { tasksAPI, campaignsAPI, teamMembersAPI } from "../../services/api";
+import { Plus, Search, CheckCircle2, Clock, AlertCircle, User, Edit, Trash2, X, Save, CheckSquare, Check, XCircle } from "lucide-react";
+import { tasksAPI, campaignsAPI, teamMembersAPI, messagesAPI, usersAPI } from "../../services/api";
 
 export default function TasksPage() {
     const [tasks, setTasks] = useState([]);
     const [campaigns, setCampaigns] = useState([]);
     const [teamMembers, setTeamMembers] = useState([]);
+    const [taskApprovalStatus, setTaskApprovalStatus] = useState({}); // { taskId: 'approved' | 'refused' | null }
     const [searchTerm, setSearchTerm] = useState("");
     const [showModal, setShowModal] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
@@ -28,14 +29,30 @@ export default function TasksPage() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [tasksRes, campaignsRes, teamMembersRes] = await Promise.all([
+            const [tasksRes, campaignsRes, teamMembersRes, messagesRes] = await Promise.all([
                 tasksAPI.getAll({ pageSize: 1000 }),
                 campaignsAPI.getAll({ pageSize: 1000 }),
-                teamMembersAPI.getAll({ pageSize: 1000 })
+                teamMembersAPI.getAll({ pageSize: 1000 }),
+                messagesAPI.getAll({ type: "AdminToTeam", pageSize: 1000 })
             ]);
             setTasks(tasksRes.items || []);
             setCampaigns(campaignsRes.items || []);
             setTeamMembers(teamMembersRes.items || []);
+            
+            // Check approval/rejection status from messages
+            const approvalStatus = {};
+            const messages = messagesRes.items || [];
+            messages.forEach(msg => {
+                if (msg.relatedEntityType === "Task" && msg.relatedEntityId) {
+                    const taskId = msg.relatedEntityId;
+                    if (msg.subject?.includes("Approved")) {
+                        approvalStatus[taskId] = 'approved';
+                    } else if (msg.subject?.includes("Revision") || msg.subject?.includes("Refused")) {
+                        approvalStatus[taskId] = 'refused';
+                    }
+                }
+            });
+            setTaskApprovalStatus(approvalStatus);
         } catch (error) {
             console.error('Error fetching data:', error);
             alert('Failed to fetch data. Please try again.');
@@ -121,6 +138,106 @@ export default function TasksPage() {
         } catch (error) {
             console.error('Error deleting task:', error);
             alert('Failed to delete task. Please try again.');
+        }
+    };
+
+    const handleApprove = async (task) => {
+        if (!window.confirm(`Approve task "${task.title}"?`)) {
+            return;
+        }
+        try {
+            // Task is already "Completed", so we just need to notify the team member
+            // Create a notification message for the team member
+            if (task.assignedToTeamMemberId) {
+                // Get the team member
+                const teamMember = teamMembers.find(tm => tm.id === task.assignedToTeamMemberId);
+                if (teamMember && teamMember.email) {
+                    // Find user by email
+                    try {
+                        const usersResponse = await usersAPI.getAll({ searchTerm: teamMember.email, pageSize: 100 });
+                        const user = usersResponse.items?.find(u => u.email?.toLowerCase() === teamMember.email?.toLowerCase());
+                        
+                        if (user && user.id) {
+                            await messagesAPI.create({
+                                subject: `Task Approved: ${task.title}`,
+                                content: `Your task "${task.title}" has been approved by the admin. Great work!`,
+                                type: "AdminToTeam",
+                                recipientUserId: user.id,
+                                teamMemberId: task.assignedToTeamMemberId,
+                                relatedEntityId: task.id,
+                                relatedEntityType: "Task"
+                            });
+                        }
+                    } catch (userError) {
+                        console.error('Error finding user:', userError);
+                        // Continue even if we can't find the user - the task is still approved
+                    }
+                }
+            }
+            
+            // Update approval status immediately
+            setTaskApprovalStatus(prev => ({
+                ...prev,
+                [task.id]: 'approved'
+            }));
+            
+            alert('Task approved! The team member has been notified.');
+            await fetchData();
+        } catch (error) {
+            console.error('Error approving task:', error);
+            alert('Failed to approve task. Please try again.');
+        }
+    };
+
+    const handleRefuse = async (task) => {
+        if (!window.confirm(`Refuse task "${task.title}"? The task will be set to "On Hold" and the team member will be notified.`)) {
+            return;
+        }
+        try {
+            // Update task status to OnHold
+            await tasksAPI.update(task.id, {
+                ...task,
+                status: "OnHold"
+            });
+
+            // Create a notification message for the team member
+            if (task.assignedToTeamMemberId) {
+                const teamMember = teamMembers.find(tm => tm.id === task.assignedToTeamMemberId);
+                if (teamMember && teamMember.email) {
+                    // Find user by email
+                    try {
+                        const usersResponse = await usersAPI.getAll({ searchTerm: teamMember.email, pageSize: 100 });
+                        const user = usersResponse.items?.find(u => u.email?.toLowerCase() === teamMember.email?.toLowerCase());
+                        
+                        if (user && user.id) {
+                            await messagesAPI.create({
+                                subject: `Task Needs Revision: ${task.title}`,
+                                content: `Your task "${task.title}" has been reviewed and needs revision. Please review the requirements and update the task accordingly.`,
+                                type: "AdminToTeam",
+                                recipientUserId: user.id,
+                                teamMemberId: task.assignedToTeamMemberId,
+                                relatedEntityId: task.id,
+                                relatedEntityType: "Task"
+                            });
+                        }
+                    } catch (userError) {
+                        console.error('Error finding user:', userError);
+                        // Continue even if we can't find the user - the task is still refused
+                    }
+                }
+            }
+            
+            // Update approval status immediately
+            setTaskApprovalStatus(prev => ({
+                ...prev,
+                [task.id]: 'refused'
+            }));
+            
+            alert('Task refused. The task has been set to "On Hold" and the team member has been notified.');
+            await fetchData();
+        } catch (error) {
+            console.error('Error refusing task:', error);
+            alert('Failed to refuse task. Please try again.');
         }
     };
 
@@ -245,7 +362,7 @@ export default function TasksPage() {
                                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                             task.status === "Completed"
                                                 ? "bg-emerald-500/20 text-emerald-400"
-                                                : task.status === "In Progress"
+                                                : task.status === "In Progress" || task.status === "InProgress"
                                                 ? "bg-blue-500/20 text-blue-400"
                                                 : overdue
                                                 ? "bg-red-500/20 text-red-400"
@@ -253,6 +370,33 @@ export default function TasksPage() {
                                         }`}>
                                             {overdue ? "Overdue" : task.status}
                                         </span>
+                                        {/* Approve/Refuse buttons for completed tasks */}
+                                        {task.status === "Completed" && task.assignedToTeamMemberId && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleApprove(task)}
+                                                    className={`p-2 rounded-lg transition-all ${
+                                                        taskApprovalStatus[task.id] === 'approved'
+                                                            ? 'bg-emerald-500/30 text-emerald-400 border border-emerald-500/50'
+                                                            : 'text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/20'
+                                                    }`}
+                                                    title={taskApprovalStatus[task.id] === 'approved' ? "Task Approved" : "Approve Task"}
+                                                >
+                                                    <Check size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRefuse(task)}
+                                                    className={`p-2 rounded-lg transition-all ${
+                                                        taskApprovalStatus[task.id] === 'refused'
+                                                            ? 'bg-red-500/30 text-red-400 border border-red-500/50'
+                                                            : 'text-slate-400 hover:text-red-400 hover:bg-red-500/20'
+                                                    }`}
+                                                    title={taskApprovalStatus[task.id] === 'refused' ? "Task Refused" : "Refuse Task"}
+                                                >
+                                                    <XCircle size={18} />
+                                                </button>
+                                            </>
+                                        )}
                                         <button
                                             onClick={() => handleOpenModal(task)}
                                             className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-700/50 rounded-lg transition-all"

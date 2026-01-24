@@ -32,7 +32,6 @@ import ClientDashboard from "./pages/client-dashboard/ClientDashboard";
 import MyCampaigns from "./pages/client-dashboard/MyCampaigns";
 import ReportsAnalytics from "./pages/client-dashboard/ReportsAnalytics";
 import Approvals from "./pages/client-dashboard/Approvals";
-import FilesAssets from "./pages/client-dashboard/FilesAssets";
 import Messages from "./pages/client-dashboard/Messages";
 import BillingInvoices from "./pages/client-dashboard/BillingInvoices";
 import AccountSettings from "./pages/client-dashboard/AccountSettings";
@@ -155,7 +154,6 @@ export default function App() {
                 <Route path="campaigns" element={<MyCampaigns />} />
                 <Route path="reports" element={<ReportsAnalytics />} />
                 <Route path="approvals" element={<Approvals />} />
-                <Route path="files" element={<FilesAssets />} />
                 <Route path="messages" element={<Messages />} />
                 <Route path="billing" element={<BillingInvoices />} />
                 <Route path="settings" element={<AccountSettings />} />

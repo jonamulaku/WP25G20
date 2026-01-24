@@ -55,12 +55,55 @@ namespace WP25G20.Controllers.Api
             }
         }
 
+        [HttpGet("me")]
+        public async Task<ActionResult<ClientDTO>> GetCurrentClient()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var isAdmin = User.IsInRole("Admin");
+            
+            // Get all clients and find the one matching the user's email
+            var clientFilter = new FilterDTO { PageSize = 1000 };
+            var clientResult = await _clientService.GetAllAsync(clientFilter, userId, isAdmin);
+            
+            // Try to get email from claims
+            var userEmail = User.FindFirstValue(ClaimTypes.Email);
+            ClientDTO? client = null;
+            
+            if (!string.IsNullOrEmpty(userEmail))
+            {
+                // Find client by email
+                client = clientResult.Items?.FirstOrDefault(c => c.Email?.ToLower() == userEmail.ToLower());
+            }
+            
+            // If not found by email, get the first client (service filters by user)
+            if (client == null)
+            {
+                client = clientResult.Items?.FirstOrDefault();
+            }
+            
+            if (client == null) return NotFound();
+            return Ok(client);
+        }
+
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ClientDTO>> Update(int id, [FromBody] ClientUpdateDTO dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var isAdmin = User.IsInRole("Admin");
+            
+            // Non-admin users can only update their own client data
+            if (!isAdmin)
+            {
+                var userEmail = User.FindFirstValue(ClaimTypes.Email);
+                if (string.IsNullOrEmpty(userEmail) || dto.Email?.ToLower() != userEmail.ToLower())
+                {
+                    return StatusCode(403, new { message = "You can only update your own client profile." });
+                }
+            }
 
             try
             {
@@ -71,6 +114,53 @@ namespace WP25G20.Controllers.Api
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("me")]
+        public async Task<ActionResult<ClientDTO>> UpdateCurrentClient([FromBody] ClientUpdateDTO dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var isAdmin = User.IsInRole("Admin");
+            
+            // Get client for current user
+            var clientFilter = new FilterDTO { PageSize = 1000 };
+            var clientResult = await _clientService.GetAllAsync(clientFilter, userId, isAdmin);
+            var existingClient = clientResult.Items?.FirstOrDefault();
+            
+            // If client doesn't exist, use id=0 to create it (ClientService handles this)
+            int clientId = existingClient?.Id ?? 0;
+            
+            // Ensure the email in DTO matches the user's email
+            var userEmail = User.FindFirstValue(ClaimTypes.Email);
+            if (!string.IsNullOrEmpty(userEmail))
+            {
+                dto.Email = userEmail;
+            }
+            else if (existingClient != null)
+            {
+                dto.Email = existingClient.Email;
+            }
+
+            try
+            {
+                var updatedClient = await _clientService.UpdateAsync(clientId, dto, userId);
+                if (updatedClient == null) return NotFound();
+                return Ok(updatedClient);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
             }
         }
 

@@ -37,15 +37,12 @@ export default function Dashboard() {
         assignedTasks: 0,
         tasksDueToday: 0,
         completionRate: 0,
-        activeCampaigns: 0,
-        roleSpecific: {}
+        activeCampaigns: 0
     });
     const [taskStatusData, setTaskStatusData] = useState([]);
     const [productivityData, setProductivityData] = useState([]);
     const [campaignContribution, setCampaignContribution] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    const role = teamMemberInfo?.role || "";
 
     useEffect(() => {
         fetchDashboardData();
@@ -90,7 +87,7 @@ export default function Dashboard() {
             };
             setTaskStatusData(Object.entries(statusCounts).map(([name, value]) => ({ name, value })));
             
-            // Weekly productivity (last 7 days) - with realistic data
+            // Weekly productivity (last 7 days) - based on real task completion data
             const last7Days = Array.from({ length: 7 }, (_, i) => {
                 const date = new Date();
                 date.setDate(date.getDate() - (6 - i));
@@ -98,18 +95,22 @@ export default function Dashboard() {
                 return date;
             });
             
-            const productivity = last7Days.map((date, index) => {
-                // Generate realistic productivity pattern
-                const baseTasks = Math.floor(Math.random() * 3) + 1;
+            const productivity = last7Days.map((date) => {
+                // Count tasks actually completed on this date
                 const completedOnDate = tasks.filter(t => {
-                    if (!t.completedAt) return false;
-                    const completedDate = new Date(t.completedAt);
-                    completedDate.setHours(0, 0, 0, 0);
-                    return completedDate.getTime() === date.getTime();
+                    if (!t.completedAt || t.status !== 'Completed') return false;
+                    try {
+                        const completedDate = new Date(t.completedAt);
+                        completedDate.setHours(0, 0, 0, 0);
+                        return completedDate.getTime() === date.getTime();
+                    } catch {
+                        return false;
+                    }
                 }).length;
+                
                 return {
                     date: date.toLocaleDateString('en-US', { weekday: 'short' }),
-                    tasks: completedOnDate || baseTasks
+                    tasks: completedOnDate
                 };
             });
             setProductivityData(productivity);
@@ -126,15 +127,11 @@ export default function Dashboard() {
             });
             setCampaignContribution(campaignData);
             
-            // Role-specific metrics (calculated from real data)
-            const roleSpecific = calculateRoleSpecificMetrics(role, tasks, userCampaigns);
-            
             setStats({
                 assignedTasks,
                 tasksDueToday,
                 completionRate,
-                activeCampaigns,
-                roleSpecific
+                activeCampaigns
             });
         } catch (error) {
             console.error("Error fetching dashboard data:", error);
@@ -143,8 +140,7 @@ export default function Dashboard() {
                 assignedTasks: 0,
                 tasksDueToday: 0,
                 completionRate: 0,
-                activeCampaigns: 0,
-                roleSpecific: {}
+                activeCampaigns: 0
             });
             
             setTaskStatusData([]);
@@ -171,9 +167,8 @@ export default function Dashboard() {
                 <p className="text-slate-400 mt-1">Welcome back, {teamMemberInfo?.firstName || userInfo.firstName || 'Team Member'}</p>
             </div>
 
-            {/* KPI Cards */}
+            {/* KPI Cards - Same for all team members */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Common Cards */}
                 <KPICard
                     title="Assigned Tasks"
                     value={stats.assignedTasks}
@@ -198,46 +193,6 @@ export default function Dashboard() {
                     icon={Megaphone}
                     color="purple"
                 />
-                
-                {/* Role-Specific Cards */}
-                {role.toLowerCase().includes('marketer') || role.toLowerCase().includes('marketing') ? (
-                    <>
-                        <KPICard
-                            title="Engagement Rate"
-                            value={`${stats.roleSpecific.engagementRate || 0}%`}
-                            icon={Users}
-                            color="indigo"
-                        />
-                        <KPICard
-                            title="CTR"
-                            value={`${stats.roleSpecific.ctr || 0}%`}
-                            icon={MousePointerClick}
-                            color="pink"
-                        />
-                    </>
-                ) : role.toLowerCase().includes('designer') || role.toLowerCase().includes('graphic') ? (
-                    <>
-                        <KPICard
-                            title="Approval Rate"
-                            value={`${stats.roleSpecific.approvalRate || 0}%`}
-                            icon={CheckCircle2}
-                            color="green"
-                        />
-                        <KPICard
-                            title="Revisions"
-                            value={stats.roleSpecific.revisions || 0}
-                            icon={FileEdit}
-                            color="orange"
-                        />
-                    </>
-                ) : role.toLowerCase().includes('manager') || role.toLowerCase().includes('campaign') ? (
-                    <KPICard
-                        title="Campaign Health Score"
-                        value={`${stats.roleSpecific.campaignHealthScore || 0}%`}
-                        icon={Target}
-                        color="teal"
-                    />
-                ) : null}
             </div>
 
             {/* Charts Section */}
@@ -346,50 +301,6 @@ export default function Dashboard() {
             )}
         </div>
     );
-}
-
-function calculateRoleSpecificMetrics(role, tasks, campaigns) {
-    const completedTasks = tasks.filter(t => t.status === 'Completed').length;
-    const totalTasks = tasks.length;
-    const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-    
-    if (role.toLowerCase().includes('marketer') || role.toLowerCase().includes('marketing')) {
-        const activeCampaigns = campaigns.filter(c => c.status === 'Active');
-        const avgProgress = activeCampaigns.length > 0
-            ? activeCampaigns.reduce((sum, c) => {
-                const progress = c.taskCount > 0 ? (c.completedTaskCount / c.taskCount) * 100 : 0;
-                return sum + progress;
-            }, 0) / activeCampaigns.length
-            : 0;
-        
-        return {
-            engagementRate: (avgProgress * 0.15).toFixed(1),
-            ctr: (avgProgress * 0.04).toFixed(2)
-        };
-    } else if (role.toLowerCase().includes('designer') || role.toLowerCase().includes('graphic')) {
-        const designTasks = tasks.filter(t => 
-            t.status === 'Completed' && 
-            (t.title?.toLowerCase().includes('design') || t.title?.toLowerCase().includes('graphic'))
-        );
-        
-        return {
-            approvalRate: totalTasks > 0 ? Math.round((designTasks.length / totalTasks) * 100) : 0,
-            revisions: Math.round(designTasks.length * 1.2)
-        };
-    } else if (role.toLowerCase().includes('manager') || role.toLowerCase().includes('campaign')) {
-        const campaignSuccessRate = campaigns.length > 0
-            ? campaigns.reduce((sum, c) => {
-                const progress = c.taskCount > 0 ? (c.completedTaskCount / c.taskCount) * 100 : 0;
-                return sum + progress;
-            }, 0) / campaigns.length
-            : 0;
-        
-        return {
-            campaignHealthScore: campaignSuccessRate.toFixed(1)
-        };
-    }
-    
-    return {};
 }
 
 function KPICard({ title, value, icon: Icon, color = "emerald" }) {

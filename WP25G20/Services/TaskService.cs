@@ -44,6 +44,8 @@ namespace WP25G20.Services
                 .Include(t => t.AssignedToTeamMember)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.CreatedBy)
+                .Include(t => t.TaskComments)
+                .Include(t => t.TaskFiles)
                 .AsQueryable();
 
             // If userId provided and not admin, filter to only show tasks user has access to
@@ -53,8 +55,12 @@ namespace WP25G20.Services
                 // Get the user to find their email and corresponding TeamMember
                 var user = await _userManager.FindByIdAsync(userId);
                 var teamMemberId = (int?)null;
+                var isClient = false;
                 if (user != null)
                 {
+                    var userRoles = await _userManager.GetRolesAsync(user);
+                    isClient = userRoles.Contains("Client");
+                    
                     var teamMember = await _context.TeamMembers
                         .FirstOrDefaultAsync(tm => tm.Email.ToLower() == user.Email.ToLower());
                     if (teamMember != null)
@@ -65,11 +71,23 @@ namespace WP25G20.Services
 
                 // Use captured variable in query
                 var capturedTeamMemberId = teamMemberId;
-                query = query.Where(t => t.CreatedById == userId || 
-                                         t.AssignedToId == userId ||
-                                         (capturedTeamMemberId.HasValue && t.AssignedToTeamMemberId == capturedTeamMemberId.Value) ||
-                                         t.Campaign.CreatedById == userId ||
-                                         t.Campaign.CampaignUsers.Any(cu => cu.UserId == userId));
+                var capturedIsClient = isClient;
+                var capturedUserEmail = user?.Email?.ToLower();
+                
+                if (capturedIsClient && !string.IsNullOrEmpty(capturedUserEmail))
+                {
+                    // For clients, show all tasks for their campaigns (by client email)
+                    query = query.Where(t => t.Campaign.Client.Email.ToLower() == capturedUserEmail);
+                }
+                else
+                {
+                    // For team members, show tasks assigned to them
+                    query = query.Where(t => t.CreatedById == userId || 
+                                             t.AssignedToId == userId ||
+                                             (capturedTeamMemberId.HasValue && t.AssignedToTeamMemberId == capturedTeamMemberId.Value) ||
+                                             t.Campaign.CreatedById == userId ||
+                                             t.Campaign.CampaignUsers.Any(cu => cu.UserId == userId));
+                }
             }
 
             // Apply search
@@ -134,31 +152,45 @@ namespace WP25G20.Services
 
             var totalCount = await query.CountAsync();
 
-            var items = await query
+            // Check if user is a client to exclude sensitive info
+            var isClientUser = false;
+            if (!string.IsNullOrEmpty(userId) && (isAdmin == null || !isAdmin.Value))
+            {
+                var userForCheck = await _userManager.FindByIdAsync(userId);
+                if (userForCheck != null)
+                {
+                    var userRoles = await _userManager.GetRolesAsync(userForCheck);
+                    isClientUser = userRoles.Contains("Client");
+                }
+            }
+
+            var tasks = await query
                 .Skip((filter.PageNumber - 1) * filter.PageSize)
                 .Take(filter.PageSize)
-                .Select(t => new TaskDTO
-                {
-                    Id = t.Id,
-                    Title = t.Title,
-                    Description = t.Description,
-                    CampaignId = t.CampaignId,
-                    CampaignName = t.Campaign.Name,
-                    AssignedToTeamMemberId = t.AssignedToTeamMemberId,
-                    AssignedToTeamMemberName = t.AssignedToTeamMember != null ? $"{t.AssignedToTeamMember.FirstName} {t.AssignedToTeamMember.LastName}" : null,
-                    AssignedToTeamMemberRole = t.AssignedToTeamMember != null ? t.AssignedToTeamMember.Role : null,
-                    AssignedToId = t.AssignedToId,
-                    AssignedToName = t.AssignedTo != null ? $"{t.AssignedTo.FirstName} {t.AssignedTo.LastName}" : null,
-                    DueDate = t.DueDate,
-                    Priority = t.Priority.ToString(),
-                    Status = t.Status.ToString(),
-                    Notes = t.Notes,
-                    CreatedAt = t.CreatedAt,
-                    CompletedAt = t.CompletedAt,
-                    CommentCount = t.TaskComments.Count,
-                    FileCount = t.TaskFiles.Count
-                })
                 .ToListAsync();
+
+            var items = tasks.Select(t => new TaskDTO
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                CampaignId = t.CampaignId,
+                CampaignName = t.Campaign.Name,
+                AssignedToTeamMemberId = t.AssignedToTeamMemberId,
+                // Don't include team member names/roles for clients (sensitive info)
+                AssignedToTeamMemberName = isClientUser ? null : (t.AssignedToTeamMember != null ? $"{t.AssignedToTeamMember.FirstName} {t.AssignedToTeamMember.LastName}" : null),
+                AssignedToTeamMemberRole = isClientUser ? null : (t.AssignedToTeamMember != null ? t.AssignedToTeamMember.Role : null),
+                AssignedToId = t.AssignedToId,
+                AssignedToName = isClientUser ? null : (t.AssignedTo != null ? $"{t.AssignedTo.FirstName} {t.AssignedTo.LastName}" : null),
+                DueDate = t.DueDate,
+                Priority = t.Priority.ToString(),
+                Status = t.Status.ToString(),
+                Notes = t.Notes,
+                CreatedAt = t.CreatedAt,
+                CompletedAt = t.CompletedAt,
+                CommentCount = t.TaskComments.Count,
+                FileCount = t.TaskFiles.Count
+            }).ToList();
 
             return new PagedResultDTO<TaskDTO>
             {

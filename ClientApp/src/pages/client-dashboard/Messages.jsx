@@ -1,81 +1,229 @@
-import { useState } from "react";
-import { Search, Send, Paperclip, AtSign, CheckCircle2, Smile, MessageSquare, Filter } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Send, CheckCircle2, MessageSquare } from "lucide-react";
+import { messagesAPI, campaignsAPI } from "../../services/api";
+import { useOutletContext } from "react-router-dom";
 
 export default function Messages() {
-    const [selectedConversation, setSelectedConversation] = useState(0);
+    const { userInfo } = useOutletContext();
+    const [campaigns, setCampaigns] = useState([]);
+    const [messages, setMessages] = useState([]);
+    const [selectedCampaignId, setSelectedCampaignId] = useState(null);
     const [message, setMessage] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
-    const [campaignFilter, setCampaignFilter] = useState("all");
+    const [loading, setLoading] = useState(true);
+    const [sending, setSending] = useState(false);
 
-    const conversations = [
-        {
-            id: 0,
-            name: "General Channel",
-            type: "general",
-            lastMessage: "Thanks for the update on the campaign progress.",
-            lastMessageTime: "2 hours ago",
-            unread: 2,
-            messages: [
-                { id: 1, sender: "Agency Team", content: "Hello! Just wanted to update you on the campaign progress.", timestamp: "2025-01-17T10:00:00", type: "text", read: true },
-                { id: 2, sender: "You", content: "Thanks for the update!", timestamp: "2025-01-17T10:15:00", type: "text", read: true },
-                { id: 3, sender: "Agency Team", content: "We've completed the design phase. Ready for your review.", timestamp: "2025-01-17T12:00:00", type: "text", read: true },
-                { id: 4, sender: "Agency Team", content: "New approval item added: Social Media Post - Instagram", timestamp: "2025-01-17T14:00:00", type: "system", read: false },
-                { id: 5, sender: "Agency Team", content: "Please review when you have a moment.", timestamp: "2025-01-17T14:05:00", type: "text", read: false }
-            ]
-        },
-        {
-            id: 1,
-            name: "Q1 Social Media Campaign",
-            type: "campaign",
-            campaign: "Q1 Social Media Campaign",
-            lastMessage: "The new creative assets are ready for review.",
-            lastMessageTime: "1 day ago",
-            unread: 0,
-            messages: [
-                { id: 1, sender: "Agency Team", content: "Hi! We're starting work on the Q1 Social Media Campaign.", timestamp: "2025-01-10T09:00:00", type: "text", read: true },
-                { id: 2, sender: "You", content: "Great! Looking forward to seeing the creative concepts.", timestamp: "2025-01-10T09:30:00", type: "text", read: true },
-                { id: 3, sender: "Agency Team", content: "The new creative assets are ready for review.", timestamp: "2025-01-16T15:00:00", type: "text", read: true }
-            ]
-        },
-        {
-            id: 2,
-            name: "Brand Awareness Campaign",
-            type: "campaign",
-            campaign: "Brand Awareness Campaign",
-            lastMessage: "Campaign performance report attached.",
-            lastMessageTime: "3 days ago",
-            unread: 0,
-            messages: [
-                { id: 1, sender: "Agency Team", content: "Campaign performance report attached.", timestamp: "2025-01-14T11:00:00", type: "file", fileName: "campaign-report.pdf", read: true }
-            ]
+    useEffect(() => {
+        fetchData();
+    }, [userInfo]);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            
+            // Fetch campaigns
+            const campaignsResponse = await campaignsAPI.getAll({ pageSize: 1000 });
+            const campaignsData = campaignsResponse.items || [];
+            setCampaigns(campaignsData);
+            
+            // Fetch all messages for this client (no type filter to get both ClientToAdmin and AdminToClient)
+            // Also fetch AdminToClient messages specifically to ensure replies are included
+            const allMessagesResponse = await messagesAPI.getAll({ 
+                pageSize: 1000 
+            });
+            const adminToClientResponse = await messagesAPI.getAll({ 
+                type: "AdminToClient",
+                pageSize: 1000 
+            });
+            
+            // Combine all messages and remove duplicates
+            const allFetchedMessages = [
+                ...(allMessagesResponse.items || []),
+                ...(adminToClientResponse.items || [])
+            ];
+            
+            // Remove duplicates by ID
+            const uniqueMessages = Array.from(
+                new Map(allFetchedMessages.map(msg => [msg.id, msg])).values()
+            );
+            
+            // Filter messages for this client - messages where they are sender/recipient or belong to their campaigns
+            const clientCampaignIds = campaignsData.map(c => c.id);
+            const allMessages = uniqueMessages.filter(msg => {
+                // Messages where client is sender or recipient
+                if (msg.senderUserId === userInfo?.id || msg.recipientUserId === userInfo?.id) {
+                    return true;
+                }
+                // AdminToClient messages (replies from admin)
+                if (msg.type === "AdminToClient") {
+                    // Include if it's a reply to a message the client sent
+                    if (msg.parentMessageId) {
+                        // We'll check this when building threads
+                        return true;
+                    }
+                    // Or if client is the recipient
+                    if (msg.recipientUserId === userInfo?.id) {
+                        return true;
+                    }
+                }
+                // Messages related to client's campaigns
+                if (msg.relatedEntityType === "Campaign" && clientCampaignIds.includes(msg.relatedEntityId)) {
+                    return true;
+                }
+                // Messages with clientId matching one of the campaigns
+                const campaign = campaignsData.find(c => c.clientId === msg.clientId);
+                return !!campaign;
+            });
+            
+            setMessages(allMessages);
+            
+            // Debug logging
+            console.log('Total messages fetched:', allMessages.length);
+            console.log('ClientToAdmin messages:', allMessages.filter(m => m.type === 'ClientToAdmin').length);
+            console.log('AdminToClient messages:', allMessages.filter(m => m.type === 'AdminToClient').length);
+            console.log('Messages with replies:', allMessages.filter(m => m.replies && m.replies.length > 0).length);
+            allMessages.filter(m => m.replies && m.replies.length > 0).forEach(m => {
+                console.log(`Message ${m.id} has ${m.replies.length} replies:`, m.replies.map(r => ({ id: r.id, type: r.type, content: r.content.substring(0, 50) })));
+            });
+            
+            // Auto-select first campaign with messages if none selected
+            if (!selectedCampaignId && campaignsData.length > 0) {
+                const campaignWithMessages = campaignsData.find(campaign => 
+                    allMessages.some(msg => msg.relatedEntityId === campaign.id || 
+                        (msg.relatedEntityType === "Campaign" && msg.clientId === campaign.clientId))
+                );
+                if (campaignWithMessages) {
+                    setSelectedCampaignId(campaignWithMessages.id);
+                } else if (campaignsData.length > 0) {
+                    setSelectedCampaignId(campaignsData[0].id);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            alert('Failed to fetch messages. Please try again.');
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
 
-    const currentConversation = conversations[selectedConversation];
-    const filteredConversations = conversations.filter(conv => {
-        const matchesSearch = conv.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCampaign = campaignFilter === "all" || (campaignFilter === "campaign" && conv.type === "campaign") || (campaignFilter === "general" && conv.type === "general");
-        return matchesSearch && matchesCampaign;
-    });
+    const getCampaignMessages = (campaignId) => {
+        if (!campaignId) return [];
+        
+        // Get all messages related to this campaign (directly or through tasks)
+        const campaignMessages = messages.filter(msg => {
+            // Direct campaign messages
+            if (msg.relatedEntityType === "Campaign" && msg.relatedEntityId === campaignId) {
+                return true;
+            }
+            // Task messages for this campaign's tasks
+            if (msg.relatedEntityType === "Task") {
+                const campaign = campaigns.find(c => c.id === campaignId);
+                if (campaign) {
+                    // We'd need to check if task belongs to campaign, but for now just check clientId
+                    return msg.clientId === campaign.clientId;
+                }
+            }
+            return false;
+        });
+        
+        // Also include replies that are nested in parent messages
+        const allReplies = [];
+        campaignMessages.forEach(msg => {
+            if (msg.replies && msg.replies.length > 0) {
+                allReplies.push(...msg.replies);
+            }
+        });
+        
+        // Combine campaign messages with nested replies, removing duplicates
+        const allCampaignMessages = [
+            ...campaignMessages,
+            ...allReplies.filter(reply => !campaignMessages.some(m => m.id === reply.id))
+        ];
+        
+        // Build conversation threads (parent messages with their replies)
+        const threads = [];
+        const processedIds = new Set();
+        
+        allCampaignMessages.forEach(msg => {
+            if (processedIds.has(msg.id)) return;
+            
+            // If this is a reply, find the parent
+            if (msg.parentMessageId) {
+                const parent = allCampaignMessages.find(m => m.id === msg.parentMessageId);
+                if (parent) {
+                    if (!processedIds.has(parent.id)) {
+                        // Get all replies for this parent (from flat list and nested)
+                        const flatReplies = allCampaignMessages.filter(m => m.parentMessageId === parent.id);
+                        const nestedReplies = parent.replies || [];
+                        const allRepliesForParent = [
+                            ...flatReplies,
+                            ...nestedReplies.filter(r => !flatReplies.some(fr => fr.id === r.id))
+                        ];
+                        
+                        threads.push({
+                            ...parent,
+                            replies: allRepliesForParent
+                        });
+                        processedIds.add(parent.id);
+                        allRepliesForParent.forEach(r => processedIds.add(r.id));
+                    }
+                    return;
+                }
+            }
+            
+            // This is a parent message
+            // Get all replies (from flat list and nested)
+            const flatReplies = allCampaignMessages.filter(m => m.parentMessageId === msg.id);
+            const nestedReplies = msg.replies || [];
+            const allRepliesForMsg = [
+                ...flatReplies,
+                ...nestedReplies.filter(r => !flatReplies.some(fr => fr.id === r.id))
+            ];
+            
+            threads.push({
+                ...msg,
+                replies: allRepliesForMsg
+            });
+            processedIds.add(msg.id);
+            allRepliesForMsg.forEach(r => processedIds.add(r.id));
+        });
+        
+        // Sort by creation date (newest first)
+        return threads.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    };
 
-    const sendMessage = () => {
-        if (!message.trim()) return;
+    const sendMessage = async () => {
+        if (!message.trim() || !selectedCampaignId) return;
         
-        // TODO: Implement API call to send message
-        const newMessage = {
-            id: currentConversation.messages.length + 1,
-            sender: "You",
-            content: message,
-            timestamp: new Date().toISOString(),
-            type: "text",
-            read: false
-        };
-        
-        // In a real app, this would be handled by state management or API
-        setMessage("");
+        try {
+            setSending(true);
+            const selectedCampaign = campaigns.find(c => c.id === selectedCampaignId);
+            
+            await messagesAPI.create({
+                subject: `Message regarding ${selectedCampaign?.name || 'campaign'}`,
+                content: message,
+                type: "ClientToAdmin",
+                senderName: userInfo?.firstName && userInfo?.lastName 
+                    ? `${userInfo.firstName} ${userInfo.lastName}`.trim()
+                    : userInfo?.email || "Client",
+                senderEmail: userInfo?.email,
+                clientId: selectedCampaign?.clientId,
+                relatedEntityId: selectedCampaignId,
+                relatedEntityType: "Campaign"
+            });
+            
+            setMessage("");
+            await fetchData();
+        } catch (error) {
+            console.error('Error sending message:', error);
+            alert('Failed to send message. Please try again.');
+        } finally {
+            setSending(false);
+        }
     };
 
     const formatTimestamp = (timestamp) => {
+        if (!timestamp) return "Just now";
         const date = new Date(timestamp);
         const now = new Date();
         const diff = now - date;
@@ -88,6 +236,22 @@ export default function Messages() {
         return date.toLocaleDateString();
     };
 
+    const filteredCampaigns = campaigns.filter(campaign => {
+        const matchesSearch = campaign.name?.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesSearch;
+    });
+
+    const selectedCampaign = campaigns.find(c => c.id === selectedCampaignId);
+    const conversationThreads = selectedCampaignId ? getCampaignMessages(selectedCampaignId) : [];
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-slate-400">Loading messages...</div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -97,161 +261,185 @@ export default function Messages() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-250px)]">
-                {/* Conversations List */}
+                {/* Campaigns List */}
                 <div className="lg:col-span-1 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden flex flex-col">
-                    {/* Search and Filter */}
-                    <div className="p-4 border-b border-slate-700/50 space-y-3">
+                    {/* Search */}
+                    <div className="p-4 border-b border-slate-700/50">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
                                 type="text"
-                                placeholder="Search conversations..."
+                                placeholder="Search campaigns..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full pl-10 pr-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
                             />
                         </div>
-                        <select
-                            value={campaignFilter}
-                            onChange={(e) => setCampaignFilter(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
-                        >
-                            <option value="all">All</option>
-                            <option value="campaign">Campaigns</option>
-                            <option value="general">General</option>
-                        </select>
                     </div>
 
-                    {/* Conversations */}
+                    {/* Campaigns */}
                     <div className="flex-1 overflow-y-auto">
-                        {filteredConversations.map((conversation) => (
-                            <button
-                                key={conversation.id}
-                                onClick={() => setSelectedConversation(conversation.id)}
-                                className={`w-full p-4 border-b border-slate-700/50 text-left hover:bg-slate-700/30 transition-all ${
-                                    selectedConversation === conversation.id ? "bg-emerald-600/20 border-emerald-500/30" : ""
-                                }`}
-                            >
-                                <div className="flex items-center justify-between mb-2">
-                                    <h3 className="text-white font-semibold text-sm">{conversation.name}</h3>
-                                    {conversation.unread > 0 && (
-                                        <span className="bg-emerald-500 text-white text-xs rounded-full px-2 py-0.5">
-                                            {conversation.unread}
-                                        </span>
-                                    )}
-                                </div>
-                                <p className="text-slate-400 text-xs truncate mb-1">{conversation.lastMessage}</p>
-                                <p className="text-slate-500 text-xs">{conversation.lastMessageTime}</p>
-                            </button>
-                        ))}
+                        {filteredCampaigns.length === 0 ? (
+                            <div className="p-4 text-center text-slate-400 text-sm">
+                                No campaigns found
+                            </div>
+                        ) : (
+                            filteredCampaigns.map((campaign) => {
+                                const campaignMessages = getCampaignMessages(campaign.id);
+                                const unreadCount = campaignMessages.reduce((count, thread) => {
+                                    const hasUnread = thread.replies?.some(reply => 
+                                        reply.recipientUserId === userInfo?.id && 
+                                        reply.status === "Unread"
+                                    ) || (thread.recipientUserId === userInfo?.id && thread.status === "Unread");
+                                    return count + (hasUnread ? 1 : 0);
+                                }, 0);
+
+                                return (
+                                    <button
+                                        key={campaign.id}
+                                        onClick={() => setSelectedCampaignId(campaign.id)}
+                                        className={`w-full p-4 border-b border-slate-700/50 text-left hover:bg-slate-700/30 transition-all ${
+                                            selectedCampaignId === campaign.id ? "bg-emerald-600/20 border-emerald-500/30" : ""
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="text-white font-semibold text-sm truncate">{campaign.name}</h3>
+                                            {unreadCount > 0 && (
+                                                <span className="bg-emerald-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
+                                                    {unreadCount}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {campaignMessages.length > 0 && (
+                                            <p className="text-slate-400 text-xs truncate mb-1">
+                                                {campaignMessages.length} conversation{campaignMessages.length !== 1 ? 's' : ''}
+                                            </p>
+                                        )}
+                                    </button>
+                                );
+                            })
+                        )}
                     </div>
                 </div>
 
                 {/* Chat Area */}
                 <div className="lg:col-span-3 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden flex flex-col">
-                    {/* Chat Header */}
-                    <div className="p-4 border-b border-slate-700/50">
-                        <h2 className="text-lg font-bold text-white">{currentConversation.name}</h2>
-                        {currentConversation.type === "campaign" && (
-                            <p className="text-slate-400 text-sm">{currentConversation.campaign}</p>
-                        )}
-                    </div>
+                    {selectedCampaign ? (
+                        <>
+                            {/* Chat Header */}
+                            <div className="p-4 border-b border-slate-700/50">
+                                <h2 className="text-lg font-bold text-white">{selectedCampaign.name}</h2>
+                                <p className="text-slate-400 text-sm">{selectedCampaign.description || 'Campaign messages'}</p>
+                            </div>
 
-                    {/* Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {currentConversation.messages.map((msg) => {
-                            const isYou = msg.sender === "You";
-                            const isSystem = msg.type === "system";
-                            
-                            return (
-                                <div
-                                    key={msg.id}
-                                    className={`flex ${isYou ? "justify-end" : "justify-start"} ${isSystem ? "justify-center" : ""}`}
-                                >
-                                    <div className={`max-w-[70%] ${isSystem ? "w-full" : ""}`}>
-                                        {!isSystem && (
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={`text-xs font-medium ${isYou ? "text-emerald-400" : "text-blue-400"}`}>
-                                                    {msg.sender}
-                                                </span>
-                                                <span className="text-slate-500 text-xs">{formatTimestamp(msg.timestamp)}</span>
-                                                {isYou && msg.read && (
-                                                    <CheckCircle2 size={14} className="text-emerald-400" />
+                            {/* Messages */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                {conversationThreads.length === 0 ? (
+                                    <div className="text-center text-slate-400 py-8">
+                                        <MessageSquare size={48} className="mx-auto mb-4 opacity-50" />
+                                        <p>No messages yet for this campaign.</p>
+                                        <p className="text-sm mt-2">Start a conversation by sending a message below.</p>
+                                    </div>
+                                ) : (
+                                    conversationThreads.map((thread) => {
+                                        const isFromClient = thread.type === "ClientToAdmin" || thread.senderUserId === userInfo?.id;
+                                        
+                                        return (
+                                            <div key={thread.id} className="border border-slate-700/50 rounded-xl p-5 bg-slate-700/20 hover:bg-slate-700/30 transition-colors">
+                                                {/* Original Message */}
+                                                <div className="mb-4 pb-4 border-b border-slate-700/50">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-white font-semibold text-sm">
+                                                                {isFromClient ? "You" : (thread.senderName || "Admin")}
+                                                            </span>
+                                                            <span className="text-slate-400 text-xs">•</span>
+                                                            <span className="text-slate-400 text-xs">
+                                                                {formatTimestamp(thread.createdAt)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-slate-200 text-sm font-medium mb-2">{thread.subject}</p>
+                                                    <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">{thread.content}</p>
+                                                </div>
+                                                
+                                                {/* Replies */}
+                                                {thread.replies && thread.replies.length > 0 ? (
+                                                    <div className="space-y-3">
+                                                        {thread.replies
+                                                            .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+                                                            .map((reply) => {
+                                                                const isFromClientReply = reply.type === "ClientToAdmin" || reply.senderUserId === userInfo?.id;
+                                                                
+                                                                return (
+                                                                    <div key={reply.id} className="pl-4 border-l-4 border-l-emerald-500 bg-slate-700/40 rounded-lg p-4">
+                                                                        <div className="flex items-center justify-between mb-2">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-emerald-400 font-semibold text-sm">
+                                                                                    {isFromClientReply ? "You" : (reply.senderName || "Admin")}
+                                                                                </span>
+                                                                                <span className="text-slate-400 text-xs">•</span>
+                                                                                <span className="text-slate-400 text-xs">
+                                                                                    {formatTimestamp(reply.createdAt)}
+                                                                                </span>
+                                                                                {reply.status === "Read" && !isFromClientReply && (
+                                                                                    <CheckCircle2 size={14} className="text-emerald-400" />
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                        <p className="text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">{reply.content}</p>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-center py-3">
+                                                        <p className="text-slate-500 text-xs italic">Waiting for admin reply...</p>
+                                                    </div>
                                                 )}
                                             </div>
-                                        )}
-                                        <div
-                                            className={`rounded-2xl p-4 ${
-                                                isSystem
-                                                    ? "bg-slate-700/30 text-slate-400 text-center text-sm"
-                                                    : isYou
-                                                    ? "bg-emerald-600/20 text-white border border-emerald-500/30"
-                                                    : "bg-slate-700/50 text-white"
-                                            }`}
-                                        >
-                                            {msg.type === "file" ? (
-                                                <div className="flex items-center gap-2">
-                                                    <Paperclip size={16} />
-                                                    <span>{msg.fileName}</span>
-                                                </div>
-                                            ) : (
-                                                <p>{msg.content}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                        );
+                                    })
+                                )}
+                            </div>
 
-                    {/* Message Input */}
-                    <div className="p-4 border-t border-slate-700/50">
-                        <div className="flex items-end gap-2">
-                            <div className="flex-1 bg-slate-700/50 rounded-xl p-2 border border-slate-600/50">
-                                <textarea
-                                    value={message}
-                                    onChange={(e) => setMessage(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !e.shiftKey) {
-                                            e.preventDefault();
-                                            sendMessage();
-                                        }
-                                    }}
-                                    placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
-                                    className="w-full bg-transparent text-white placeholder-slate-500 resize-none focus:outline-none max-h-32"
-                                    rows={2}
-                                />
-                                <div className="flex items-center gap-2 mt-2">
+                            {/* Message Input */}
+                            <div className="p-4 border-t border-slate-700/50">
+                                <div className="flex items-end gap-2">
+                                    <div className="flex-1 bg-slate-700/50 rounded-xl p-2 border border-slate-600/50">
+                                        <textarea
+                                            value={message}
+                                            onChange={(e) => setMessage(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    sendMessage();
+                                                }
+                                            }}
+                                            placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
+                                            className="w-full bg-transparent text-white placeholder-slate-500 resize-none focus:outline-none max-h-32"
+                                            rows={2}
+                                        />
+                                    </div>
                                     <button
-                                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-600/50 rounded-lg transition-all"
-                                        title="Attach file"
+                                        onClick={sendMessage}
+                                        disabled={!message.trim() || sending}
+                                        className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                     >
-                                        <Paperclip size={18} />
-                                    </button>
-                                    <button
-                                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-600/50 rounded-lg transition-all"
-                                        title="Mention @admin"
-                                    >
-                                        <AtSign size={18} />
-                                    </button>
-                                    <button
-                                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-600/50 rounded-lg transition-all"
-                                        title="Add reaction"
-                                    >
-                                        <Smile size={18} />
+                                        <Send size={20} />
+                                        Send
                                     </button>
                                 </div>
                             </div>
-                            <button
-                                onClick={sendMessage}
-                                disabled={!message.trim()}
-                                className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                <Send size={20} />
-                                Send
-                            </button>
+                        </>
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center">
+                            <div className="text-center text-slate-400">
+                                <MessageSquare size={48} className="mx-auto mb-4 opacity-50" />
+                                <p>Select a campaign to view messages</p>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

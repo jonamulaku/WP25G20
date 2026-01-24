@@ -334,10 +334,9 @@ export default function Projects() {
         </div>
       </section>
 
-      {/* FILTERS - Fixed sticky position to match navbar height */}
+      {/* FILTERS */}
       <section
-        className="sticky z-40 w-full bg-white/98 backdrop-blur-lg border-b border-slate-200 shadow-md"
-        style={{ top: NAVBAR_HEIGHT }}
+        className="w-full bg-white/98 backdrop-blur-lg border-b border-slate-200 shadow-md"
         role="search"
         aria-label="Project filters"
       >
@@ -429,7 +428,7 @@ export default function Projects() {
                 {filteredProjects.length === 1 ? "project" : "projects"}
               </div>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProjects.map((project, index) => (
                   <article
                     key={project.id}
@@ -451,7 +450,7 @@ export default function Projects() {
                         <SafeImage
                           src={project.image}
                           alt={`${project.title} project image`}
-                          className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-700"
+                          className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-700"
                         />
 
                         <div className="absolute top-4 left-4 z-20 flex gap-2">
@@ -476,28 +475,28 @@ export default function Projects() {
                         </div>
                       </div>
 
-                      <div className="p-6 flex-1 flex flex-col">
-                        <div className="flex items-center gap-3 mb-3 text-xs text-slate-500">
+                      <div className="p-4 flex-1 flex flex-col">
+                        <div className="flex items-center gap-2 mb-2.5 text-xs text-slate-500">
                           <div className="flex items-center gap-1">
-                            <Calendar size={12} aria-hidden="true" />
+                            <Calendar size={11} aria-hidden="true" />
                             <time dateTime={project.year}>{project.year}</time>
                           </div>
                           <span aria-hidden="true">•</span>
                           <div className="flex items-center gap-1">
-                            <MapPin size={12} aria-hidden="true" />
+                            <MapPin size={11} aria-hidden="true" />
                             <span className="line-clamp-1">{project.location}</span>
                           </div>
                         </div>
 
-                        <h3 className="text-xl font-extrabold text-slate-900 mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors leading-tight">
+                        <h3 className="text-lg font-extrabold text-slate-900 mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors leading-tight">
                           {project.title}
                         </h3>
 
-                        <p className="text-slate-600 text-sm mb-1 font-medium">
+                        <p className="text-slate-600 text-xs mb-1 font-medium">
                           <span className="font-bold">Client:</span> {project.client}
                         </p>
 
-                        <p className="text-slate-600 text-sm mb-4 line-clamp-2 flex-1 font-light leading-relaxed">
+                        <p className="text-slate-600 text-xs mb-3 line-clamp-2 flex-1 font-light leading-relaxed">
                           {project.description}
                         </p>
 

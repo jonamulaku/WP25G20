@@ -651,7 +651,7 @@ function PricingSection() {
                                         </div>
 
                                         {/* CTA */}
-                                        <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-2xl p-8 border-2 border-emerald-200 text-center">
+                                        <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-2xl p-5 border-2 border-emerald-200 text-center">
                                             <p className="text-slate-700 mb-6 font-medium">
                                                 For more information about this package and to discuss how it fits your business needs, let's schedule a meeting.
                                             </p>
@@ -769,15 +769,28 @@ export default function Services() {
                             desc="Comprehensive marketing solutions delivered by our expert team of digital marketing specialists, graphic designers, and campaign managers"
                         />
 
-                        <div className="space-y-20">
+                        <div className="space-y-24">
                             {detailedServices.map((service, index) => (
                                 <div
                                     key={service.id}
                                     className="group relative"
                                 >
-                                    <div className="grid lg:grid-cols-2 gap-12 items-start">
-                                        {/* Left: Image Section */}
-                                        <div className="space-y-6">
+                                    {/* Service Header - Full Width */}
+                                    <div className="mb-12 text-center">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 shadow-lg border-2 border-emerald-100 mb-6 mx-auto">
+                                            <span className="text-2xl font-extrabold text-emerald-700">0{index + 1}</span>
+                                        </div>
+                                        <h3 className="text-3xl lg:text-4xl font-extrabold text-slate-900 mb-6 leading-tight">
+                                            {service.name}
+                                        </h3>
+                                        <p className="text-lg text-slate-600 leading-relaxed font-light max-w-4xl mx-auto">
+                                            {service.overview}
+                                        </p>
+                                    </div>
+
+                                    <div className="grid lg:grid-cols-2 gap-8 items-start">
+                                        {/* Left: Image and Deliverables */}
+                                        <div className="space-y-8">
                                             {/* Main Image */}
                                             <div className="relative group/image">
                                                 <div className="absolute -inset-4 bg-gradient-to-br from-emerald-100/40 to-emerald-50/20 rounded-3xl blur-2xl opacity-50 group-hover/image:opacity-70 transition-opacity duration-500"></div>
@@ -785,7 +798,7 @@ export default function Services() {
                                                     <img
                                                         src={service.image}
                                                         alt={service.name}
-                                                        className="w-full h-[350px] object-cover group-hover/image:scale-105 transition-transform duration-700"
+                                                        className="w-full h-[300px] object-cover group-hover/image:scale-105 transition-transform duration-700"
                                                     />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
                                                     <div className="absolute top-6 left-6 z-10">
@@ -796,34 +809,20 @@ export default function Services() {
                                                 </div>
                                             </div>
 
-                                            {/* Overview Text Below Image */}
-                                            <div className="bg-white rounded-2xl p-8 border-2 border-slate-200 shadow-lg">
-                                                <div className="flex items-center gap-3 mb-4">
-                                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center shadow-md">
-                                                        <span className="text-xl font-extrabold text-emerald-700">0{index + 1}</span>
-                                                    </div>
-                                                    <h3 className="text-2xl lg:text-3xl font-extrabold text-slate-900 leading-tight">
-                                                        {service.name}
-                                                    </h3>
-                                                </div>
-                                                <p className="text-base text-slate-600 leading-relaxed font-light">
-                                                    {service.overview}
-                                                </p>
-                                            </div>
-
                                             {/* Deliverables Section */}
-                                            <div className="bg-white rounded-2xl p-8 border-2 border-slate-200 shadow-lg">
-                                                <div className="flex items-center gap-3 mb-6 pb-3 border-b-2 border-slate-200">
-                                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                                                        <CheckCircle2 className="text-emerald-600" size={20} />
+                                            <div className="bg-white rounded-2xl p-5 border-2 border-slate-200 shadow-lg">
+                                                <div className="text-center mb-6">
+                                                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-4 bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm">
+                                                        <CheckCircle2 size={16} className="shrink-0" />
+                                                        <span>Deliverables</span>
                                                     </div>
-                                                    <h4 className="text-xl font-extrabold text-slate-900">What's Included</h4>
+                                                    <h4 className="text-2xl lg:text-3xl font-extrabold text-slate-900">What's Included</h4>
                                                 </div>
-                                                <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl p-6 border-2 border-slate-200">
+                                                <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl p-5 border-2 border-slate-200">
                                                     <ul className="space-y-3">
                                                         {service.deliverables.map((item, i) => (
                                                             <li key={i} className="flex items-start gap-3">
-                                                                <div className="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                                <div className="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
                                                                     <CheckCircle2 className="text-emerald-700" size={14} />
                                                                 </div>
                                                                 <span className="text-slate-700 text-sm font-medium leading-relaxed">{item}</span>
@@ -835,25 +834,26 @@ export default function Services() {
                                         </div>
 
                                         {/* Right: Methods Section */}
-                                        <div>
-                                            <div className="flex items-center gap-3 mb-6 pb-3 border-b-2 border-slate-200">
-                                                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                                                    <Rocket className="text-emerald-600" size={20} />
+                                        <div className="space-y-5">
+                                            <div className="text-center mb-6">
+                                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-4 bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm">
+                                                    <Rocket size={16} className="shrink-0" />
+                                                    <span>Our Process</span>
                                                 </div>
-                                                <h4 className="text-xl font-extrabold text-slate-900">How We Do It</h4>
+                                                <h4 className="text-2xl lg:text-3xl font-extrabold text-slate-900">How We Do It</h4>
                                             </div>
-                                            <div className="grid gap-4">
+                                            <div className="grid gap-5">
                                                 {service.methods.map((method, i) => (
                                                     <div
                                                         key={i}
-                                                        className="group/item bg-white rounded-xl p-6 border-2 border-slate-200 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50 transition-all duration-300"
+                                                        className="group/item bg-white rounded-xl p-5 border-2 border-slate-200 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50 transition-all duration-300"
                                                     >
                                                         <div className="flex items-start gap-4">
-                                                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center group-hover/item:from-emerald-100 group-hover/item:to-emerald-200 group-hover/item:scale-105 transition-all duration-300 flex-shrink-0 shadow-md">
-                                                                <method.icon className="text-emerald-600" size={20} />
+                                                            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center group-hover/item:from-emerald-100 group-hover/item:to-emerald-200 group-hover/item:scale-105 transition-all duration-300 flex-shrink-0 shadow-md">
+                                                                <method.icon className="text-emerald-600" size={22} />
                                                             </div>
                                                             <div className="flex-1">
-                                                                <h5 className="font-extrabold text-slate-900 mb-2 text-base group-hover/item:text-emerald-700 transition-colors leading-tight">
+                                                                <h5 className="font-extrabold text-slate-900 mb-2.5 text-lg group-hover/item:text-emerald-700 transition-colors leading-tight">
                                                                     {method.title}
                                                                 </h5>
                                                                 <p className="text-sm text-slate-600 leading-relaxed font-light">
@@ -886,7 +886,7 @@ export default function Services() {
                             {targetAudiences.map((audience, index) => (
                                 <div
                                     key={index}
-                                    className="group relative bg-white rounded-3xl p-9 border-2 border-slate-200
+                                    className="group relative bg-white rounded-2xl p-5 border-2 border-slate-200
                                              hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50
                                              transition-all duration-300 hover:-translate-y-1 text-center"
                                 >
@@ -920,8 +920,8 @@ export default function Services() {
                         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                             {engagementSteps.map((step, index) => (
                                 <div key={index} className="relative group">
-                                    <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-3xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
-                                    <div className="relative bg-white rounded-3xl p-9 border-2 border-slate-200 hover:border-emerald-300 hover:shadow-xl transition-all duration-300 h-full hover:-translate-y-1">
+                                    <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
+                                    <div className="relative bg-white rounded-2xl p-5 border-2 border-slate-200 hover:border-emerald-300 hover:shadow-xl transition-all duration-300 h-full hover:-translate-y-1">
                                         <div className="flex items-start justify-between mb-7">
                                             <div className="text-6xl font-extrabold text-emerald-50 group-hover:text-emerald-100 transition-colors duration-300">
                                                 {step.number}
@@ -960,7 +960,7 @@ export default function Services() {
                             {industryUseCases.map((useCase, index) => (
                                 <div
                                     key={index}
-                                    className="group relative bg-white rounded-3xl p-9 border-2 border-slate-200
+                                    className="group relative bg-white rounded-2xl p-5 border-2 border-slate-200
                                              hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50
                                              transition-all duration-300 hover:-translate-y-1"
                                 >

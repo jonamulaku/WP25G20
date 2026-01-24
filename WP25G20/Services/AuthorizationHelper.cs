@@ -64,7 +64,18 @@ namespace WP25G20.Services
             if (client == null) return false;
 
             // User can update if they created it
-            return client.CreatedById == userId;
+            if (client.CreatedById == userId) return true;
+
+            // User can also update if the client's email matches their email (for clients updating their own profile)
+            var user = await _context.Users.FindAsync(userId);
+            if (user != null && !string.IsNullOrEmpty(user.Email) && 
+                !string.IsNullOrEmpty(client.Email) &&
+                user.Email.ToLower() == client.Email.ToLower())
+            {
+                return true;
+            }
+
+            return false;
         }
 
         public async Task<bool> CanViewTaskAsync(int taskId, string userId, bool isAdmin)

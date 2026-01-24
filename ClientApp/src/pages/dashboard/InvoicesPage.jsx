@@ -1,17 +1,93 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Download, Eye, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { invoicesAPI, paymentsAPI } from "../../services/api";
 
 export default function InvoicesPage() {
-    const [invoices, setInvoices] = useState([
-        { id: 1, client: "Tech Corp", amount: 15000, date: "2025-01-15", dueDate: "2025-02-15", status: "Paid" },
-        { id: 2, client: "Design Studio", amount: 25000, date: "2025-01-20", dueDate: "2025-02-20", status: "Pending" },
-        { id: 3, client: "Marketing Pro", amount: 18000, date: "2025-01-10", dueDate: "2025-02-10", status: "Overdue" },
-    ]);
+    const [invoices, setInvoices] = useState([]);
+    const [payments, setPayments] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
 
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            
+            // First, ensure invoices exist for all campaigns
+            try {
+                await invoicesAPI.ensureCampaignInvoices();
+            } catch (error) {
+                console.warn('Error ensuring campaign invoices:', error);
+                // Continue even if this fails
+            }
+            
+            // Fetch invoices and payments
+            const invoicesRes = await invoicesAPI.getAll({ pageSize: 1000 });
+            const paymentsRes = await paymentsAPI.getAll({ pageSize: 1000 });
+            
+            const fetchedInvoices = invoicesRes.items || [];
+            const fetchedPayments = paymentsRes.items || [];
+            
+            // Map invoices to include status calculations
+            const mappedInvoices = fetchedInvoices.map(inv => {
+                let status = inv.status;
+                if (status === "Sent") status = "Pending";
+                
+                // Check if overdue
+                if (status === "Pending" && inv.dueDate) {
+                    const dueDate = new Date(inv.dueDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (dueDate < today) {
+                        status = "Overdue";
+                    }
+                }
+                
+                return {
+                    id: inv.id,
+                    invoiceNumber: inv.invoiceNumber,
+                    client: inv.clientName,
+                    amount: parseFloat(inv.totalAmount),
+                    date: inv.issueDate ? new Date(inv.issueDate).toISOString().split('T')[0] : null,
+                    dueDate: inv.dueDate ? new Date(inv.dueDate).toISOString().split('T')[0] : null,
+                    status: status,
+                    campaignName: inv.campaignName,
+                    paidDate: inv.paidDate
+                };
+            });
+            
+            setInvoices(mappedInvoices);
+            setPayments(fetchedPayments);
+        } catch (error) {
+            console.error('Error fetching invoices:', error);
+            alert('Failed to fetch invoices. Please try again.');
+            setInvoices([]);
+            setPayments([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const filteredInvoices = invoices.filter(invoice =>
-        invoice.client.toLowerCase().includes(searchTerm.toLowerCase())
+        invoice.client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        invoice.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    // Calculate summary stats
+    const summaryStats = {
+        totalRevenue: invoices
+            .filter(inv => inv.status === "Paid")
+            .reduce((sum, inv) => sum + inv.amount, 0),
+        pendingPayments: invoices
+            .filter(inv => inv.status === "Pending")
+            .reduce((sum, inv) => sum + inv.amount, 0),
+        overdue: invoices
+            .filter(inv => inv.status === "Overdue")
+            .reduce((sum, inv) => sum + inv.amount, 0)
+    };
 
     const getStatusIcon = (status) => {
         switch (status) {
@@ -25,6 +101,14 @@ export default function InvoicesPage() {
                 return <Clock className="text-slate-400" size={20} />;
         }
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-slate-400">Loading invoices...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -44,15 +128,15 @@ export default function InvoicesPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
                     <p className="text-slate-400 text-sm mb-2">Total Revenue</p>
-                    <p className="text-3xl font-bold text-white">$58,000</p>
+                    <p className="text-3xl font-bold text-white">${summaryStats.totalRevenue.toLocaleString()}</p>
                 </div>
                 <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
                     <p className="text-slate-400 text-sm mb-2">Pending Payments</p>
-                    <p className="text-3xl font-bold text-amber-400">$25,000</p>
+                    <p className="text-3xl font-bold text-amber-400">${summaryStats.pendingPayments.toLocaleString()}</p>
                 </div>
                 <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
                     <p className="text-slate-400 text-sm mb-2">Overdue</p>
-                    <p className="text-3xl font-bold text-red-400">$18,000</p>
+                    <p className="text-3xl font-bold text-red-400">${summaryStats.overdue.toLocaleString()}</p>
                 </div>
             </div>
 
@@ -89,19 +173,19 @@ export default function InvoicesPage() {
                             {filteredInvoices.map((invoice) => (
                                 <tr key={invoice.id} className="hover:bg-slate-700/20 transition-colors">
                                     <td className="px-6 py-4">
-                                        <span className="text-white font-medium">#{invoice.id.toString().padStart(4, '0')}</span>
+                                        <span className="text-white font-medium">{invoice.invoiceNumber}</span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="text-white">{invoice.client}</span>
+                                        <span className="text-white">{invoice.client || 'N/A'}</span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className="text-white font-semibold">${invoice.amount.toLocaleString()}</span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="text-slate-300">{invoice.date}</span>
+                                        <span className="text-slate-300">{invoice.date || 'N/A'}</span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="text-slate-300">{invoice.dueDate}</span>
+                                        <span className="text-slate-300">{invoice.dueDate || 'N/A'}</span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">

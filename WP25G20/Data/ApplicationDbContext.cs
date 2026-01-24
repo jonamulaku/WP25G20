@@ -25,6 +25,8 @@ namespace WP25G20.Data
         public DbSet<ActivityLog> ActivityLogs { get; set; }
         public DbSet<TeamMember> TeamMembers { get; set; }
         public DbSet<Message> Messages { get; set; }
+        public DbSet<ApprovalRequest> ApprovalRequests { get; set; }
+        public DbSet<ApprovalComment> ApprovalComments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -196,6 +198,47 @@ namespace WP25G20.Data
 
                 entity.HasIndex(e => e.CreatedAt);
                 entity.HasIndex(e => new { e.Type, e.Status });
+            });
+
+            builder.Entity<ApprovalRequest>(entity =>
+            {
+                entity.HasOne(e => e.Campaign)
+                    .WithMany()
+                    .HasForeignKey(e => e.CampaignId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Task)
+                    .WithMany()
+                    .HasForeignKey(e => e.TaskId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.CreatedBy)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreatedById)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.ApprovedBy)
+                    .WithMany()
+                    .HasForeignKey(e => e.ApprovedById)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(e => new { e.CampaignId, e.Status });
+                entity.HasIndex(e => e.CreatedAt);
+            });
+
+            builder.Entity<ApprovalComment>(entity =>
+            {
+                entity.HasOne(e => e.ApprovalRequest)
+                    .WithMany(ar => ar.Comments)
+                    .HasForeignKey(e => e.ApprovalRequestId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.CreatedBy)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreatedById)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(e => e.CreatedAt);
             });
         }
     }

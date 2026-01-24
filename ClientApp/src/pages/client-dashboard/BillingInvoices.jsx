@@ -1,67 +1,94 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Download, Eye, CheckCircle2, Clock, XCircle, CreditCard, DollarSign, FileText } from "lucide-react";
+import { invoicesAPI, paymentsAPI, campaignsAPI, servicesAPI } from "../../services/api";
+import { useOutletContext } from "react-router-dom";
 
 export default function BillingInvoices() {
-    const [invoices, setInvoices] = useState([
-        { 
-            id: 1, 
-            invoice: "INV-2025-001", 
-            period: "January 2025", 
-            amount: 25000, 
-            status: "Paid",
-            date: "2025-01-15",
-            dueDate: "2025-02-15",
-            services: [
-                { name: "Social Media Campaign Management", amount: 15000 },
-                { name: "Content Creation", amount: 7000 },
-                { name: "Analytics & Reporting", amount: 3000 }
-            ],
-            taxes: 2500,
-            total: 27500,
-            paymentMethod: "Credit Card ending in 4242",
-            paymentDate: "2025-01-20"
-        },
-        { 
-            id: 2, 
-            invoice: "INV-2025-002", 
-            period: "February 2025", 
-            amount: 35000, 
-            status: "Pending",
-            date: "2025-02-01",
-            dueDate: "2025-03-01",
-            services: [
-                { name: "Brand Awareness Campaign", amount: 25000 },
-                { name: "Video Production", amount: 8000 },
-                { name: "Media Buying", amount: 2000 }
-            ],
-            taxes: 3500,
-            total: 38500,
-            paymentMethod: null,
-            paymentDate: null
-        },
-        { 
-            id: 3, 
-            invoice: "INV-2025-003", 
-            period: "Q1 2025", 
-            amount: 15000, 
-            status: "Overdue",
-            date: "2025-01-10",
-            dueDate: "2025-02-10",
-            services: [
-                { name: "Email Marketing Campaign", amount: 10000 },
-                { name: "Template Design", amount: 5000 }
-            ],
-            taxes: 1500,
-            total: 16500,
-            paymentMethod: null,
-            paymentDate: null
-        }
-    ]);
+    const { userInfo } = useOutletContext();
+    const [invoices, setInvoices] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
     const [showPayment, setShowPayment] = useState(false);
+    const [campaigns, setCampaigns] = useState([]);
+    const [services, setServices] = useState([]);
+
+    useEffect(() => {
+        fetchData();
+    }, [userInfo]);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            
+            // First, ensure invoices exist for all campaigns
+            try {
+                await invoicesAPI.ensureCampaignInvoices();
+            } catch (error) {
+                console.warn('Error ensuring campaign invoices:', error);
+                // Continue even if this fails
+            }
+            
+            // Fetch invoices (backend filters by client email)
+            const invoicesRes = await invoicesAPI.getAll({ pageSize: 1000 });
+            const fetchedInvoices = invoicesRes.items || [];
+            
+            // Fetch campaigns and services for invoice details
+            const campaignsRes = await campaignsAPI.getAll({ pageSize: 1000 });
+            const servicesRes = await servicesAPI.getAll({ pageSize: 1000 });
+            
+            setCampaigns(campaignsRes.items || []);
+            setServices(servicesRes.items || []);
+            
+            // Map invoices to include campaign and service details
+            const mappedInvoices = fetchedInvoices.map(inv => {
+                const campaign = campaignsRes.items?.find(c => c.id === inv.campaignId);
+                const service = servicesRes.items?.find(s => s.id === campaign?.serviceId);
+                
+                // Determine status (map from backend status)
+                let status = inv.status;
+                // Map "Sent" and "Draft" to "Pending" for display
+                if (status === "Sent" || status === "Draft") status = "Pending";
+                
+                // Check if overdue (only for non-paid invoices)
+                if (status === "Pending" && inv.dueDate) {
+                    const dueDate = new Date(inv.dueDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (dueDate < today) {
+                        status = "Overdue";
+                    }
+                }
+                
+                return {
+                    id: inv.id,
+                    invoice: inv.invoiceNumber,
+                    period: campaign ? campaign.name : `Invoice ${inv.invoiceNumber}`,
+                    amount: parseFloat(inv.amount),
+                    status: status,
+                    date: inv.issueDate ? new Date(inv.issueDate).toISOString().split('T')[0] : null,
+                    dueDate: inv.dueDate ? new Date(inv.dueDate).toISOString().split('T')[0] : null,
+                    services: service ? [{ name: service.name, amount: parseFloat(inv.amount) }] : [],
+                    taxes: inv.taxAmount ? parseFloat(inv.taxAmount) : 0,
+                    total: parseFloat(inv.totalAmount),
+                    paymentMethod: inv.status === "Paid" ? "Online Payment" : null,
+                    paymentDate: inv.paidDate ? new Date(inv.paidDate).toISOString().split('T')[0] : null,
+                    campaignName: campaign?.name,
+                    campaignId: inv.campaignId
+                };
+            });
+            
+            setInvoices(mappedInvoices);
+        } catch (error) {
+            console.error('Error fetching invoices:', error);
+            alert('Failed to fetch invoices. Please try again.');
+            setInvoices([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredInvoices = invoices.filter(invoice =>
         invoice.invoice.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -98,9 +125,29 @@ export default function BillingInvoices() {
         console.log("Downloading invoice:", invoice.invoice);
     };
 
-    const handlePayment = (invoice) => {
-        // TODO: Integrate with Stripe/PayPal
-        setShowPayment(true);
+    const handlePayment = async (invoice) => {
+        try {
+            // Create payment record
+            const paymentData = {
+                invoiceId: invoice.id,
+                amount: invoice.total,
+                method: "Stripe", // Default to Stripe for online payments
+                transactionId: `TXN-${Date.now()}`,
+                notes: `Payment for invoice ${invoice.invoice}`
+            };
+            
+            await paymentsAPI.create(paymentData);
+            
+            // Refresh invoices to show updated status
+            await fetchData();
+            
+            alert('Payment processed successfully!');
+            setShowPayment(false);
+            closeDetail();
+        } catch (error) {
+            console.error('Error processing payment:', error);
+            alert(error.message || 'Failed to process payment. Please try again.');
+        }
     };
 
     const summaryStats = {
@@ -108,6 +155,14 @@ export default function BillingInvoices() {
         pendingPayments: invoices.reduce((sum, inv) => inv.status === "Pending" ? sum + inv.total : sum, 0),
         overdue: invoices.reduce((sum, inv) => inv.status === "Overdue" ? sum + inv.total : sum, 0)
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-slate-400">Loading invoices...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -119,7 +174,7 @@ export default function BillingInvoices() {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-4">
                         <DollarSign className="text-emerald-400" size={24} />
                         <CheckCircle2 className="text-emerald-400" size={20} />
@@ -127,7 +182,7 @@ export default function BillingInvoices() {
                     <p className="text-slate-400 text-sm mb-2">Total Paid</p>
                     <p className="text-3xl font-bold text-white">${summaryStats.totalRevenue.toLocaleString()}</p>
                 </div>
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-4">
                         <Clock className="text-amber-400" size={24} />
                         <Clock className="text-amber-400" size={20} />
@@ -135,7 +190,7 @@ export default function BillingInvoices() {
                     <p className="text-slate-400 text-sm mb-2">Pending Payments</p>
                     <p className="text-3xl font-bold text-amber-400">${summaryStats.pendingPayments.toLocaleString()}</p>
                 </div>
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-4">
                         <XCircle className="text-red-400" size={24} />
                         <XCircle className="text-red-400" size={20} />
@@ -271,18 +326,28 @@ export default function BillingInvoices() {
                                 </div>
                             </div>
 
-                            {/* Campaign Breakdown */}
+                            {/* Campaign Info */}
+                            {selectedInvoice.campaignName && (
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-400 mb-2">Campaign</h3>
+                                    <p className="text-white">{selectedInvoice.campaignName}</p>
+                                </div>
+                            )}
+
+                            {/* Invoice Breakdown */}
                             <div>
-                                <h3 className="text-lg font-semibold text-white mb-4">Campaign Breakdown</h3>
+                                <h3 className="text-lg font-semibold text-white mb-4">Invoice Breakdown</h3>
                                 <div className="bg-slate-900/50 rounded-xl p-4 space-y-2">
                                     <div className="flex items-center justify-between">
                                         <span className="text-slate-400">Subtotal</span>
                                         <span className="text-white">${selectedInvoice.amount.toLocaleString()}</span>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-slate-400">Taxes (10%)</span>
-                                        <span className="text-white">${selectedInvoice.taxes.toLocaleString()}</span>
-                                    </div>
+                                    {selectedInvoice.taxes > 0 && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-slate-400">Taxes</span>
+                                            <span className="text-white">${selectedInvoice.taxes.toLocaleString()}</span>
+                                        </div>
+                                    )}
                                     <div className="pt-3 border-t border-slate-700/50 flex items-center justify-between">
                                         <span className="text-white font-bold text-lg">Total</span>
                                         <span className="text-white font-bold text-lg">${selectedInvoice.total.toLocaleString()}</span>
@@ -333,16 +398,22 @@ export default function BillingInvoices() {
                                     <div className="bg-slate-900/50 rounded-xl p-6 space-y-4">
                                         <div>
                                             <label className="text-slate-400 text-sm mb-2 block">Payment Method</label>
-                                            <select className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
-                                                <option>Stripe (Credit Card)</option>
-                                                <option>PayPal</option>
+                                            <select 
+                                                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                                defaultValue="Stripe"
+                                            >
+                                                <option value="Stripe">Stripe (Credit Card)</option>
+                                                <option value="PayPal">PayPal</option>
                                             </select>
                                         </div>
                                         <div className="flex items-center justify-between pt-4 border-t border-slate-700/50">
                                             <span className="text-white font-bold">Amount to Pay</span>
                                             <span className="text-2xl font-bold text-emerald-400">${selectedInvoice.total.toLocaleString()}</span>
                                         </div>
-                                        <button className="w-full px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all">
+                                        <button 
+                                            onClick={() => handlePayment(selectedInvoice)}
+                                            className="w-full px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all"
+                                        >
                                             Process Payment
                                         </button>
                                     </div>

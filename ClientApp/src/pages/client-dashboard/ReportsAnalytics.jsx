@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 import { TrendingUp, Eye, MousePointerClick, Users, BarChart3, PieChart } from "lucide-react";
+import { campaignsAPI, tasksAPI } from "../../services/api";
+import { useOutletContext } from "react-router-dom";
 
 export default function ReportsAnalytics() {
+    const { userInfo } = useOutletContext();
+    const [campaigns, setCampaigns] = useState([]);
+    const [tasks, setTasks] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [metrics, setMetrics] = useState({
         impressions: 0,
         clicks: 0,
@@ -10,16 +16,45 @@ export default function ReportsAnalytics() {
     });
 
     useEffect(() => {
-        // TODO: Fetch real data from API
-        setTimeout(() => {
+        fetchData();
+    }, [userInfo]);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const [campaignsRes, tasksRes] = await Promise.all([
+                campaignsAPI.getAll({ pageSize: 1000 }),
+                tasksAPI.getAll({ pageSize: 1000 })
+            ]);
+            
+            const campaignsData = campaignsRes.items || [];
+            const tasksData = tasksRes.items || [];
+            
+            setCampaigns(campaignsData);
+            setTasks(tasksData);
+            
+            // Calculate metrics from campaigns (using budget as base for mock metrics)
+            const totalBudget = campaignsData.reduce((sum, c) => sum + (c.budget || 0), 0);
+            
+            // Generate metrics based on campaigns (mock data for now, can be replaced with real analytics API later)
+            const impressions = Math.floor(totalBudget * 50); // Mock: 50 impressions per dollar
+            const clicks = Math.floor(impressions * 0.036); // Mock: 3.6% CTR
+            const conversions = Math.floor(clicks * 0.028); // Mock: 2.8% conversion rate
+            const reach = Math.floor(impressions * 0.68); // Mock: 68% reach
+            
             setMetrics({
-                impressions: 1250000,
-                clicks: 45000,
-                conversions: 1250,
-                reach: 850000
+                impressions,
+                clicks,
+                conversions,
+                reach
             });
-        }, 500);
-    }, []);
+        } catch (error) {
+            console.error('Error fetching reports data:', error);
+            alert('Failed to fetch reports data. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const metricCards = [
         {
@@ -52,12 +87,70 @@ export default function ReportsAnalytics() {
         }
     ];
 
-    const campaignPerformance = [
-        { name: "Q1 Social Media", impressions: 450000, clicks: 18000, conversions: 450, budget: 25000 },
-        { name: "Brand Awareness", impressions: 350000, clicks: 14000, conversions: 350, budget: 35000 },
-        { name: "Email Marketing", impressions: 250000, clicks: 8500, conversions: 250, budget: 15000 },
-        { name: "Product Launch", impressions: 200000, clicks: 4500, conversions: 200, budget: 45000 },
+    // Generate campaign performance data from real campaigns
+    const campaignPerformance = campaigns.map(campaign => {
+        // Calculate mock metrics based on campaign budget and tasks
+        const campaignTasks = tasks.filter(t => t.campaignId === campaign.id);
+        const completedTasks = campaignTasks.filter(t => t.status === "Completed").length;
+        const totalTasks = campaignTasks.length;
+        
+        // Mock metrics based on budget and task completion
+        const baseImpressions = Math.floor((campaign.budget || 0) * 50);
+        const impressions = baseImpressions + (completedTasks * 5000); // More impressions for completed tasks
+        const clicks = Math.floor(impressions * (0.03 + (completedTasks / totalTasks) * 0.02)); // Better CTR with more completed tasks
+        const conversions = Math.floor(clicks * 0.025); // 2.5% conversion rate
+        
+        return {
+            name: campaign.name,
+            impressions,
+            clicks,
+            conversions,
+            budget: campaign.budget || 0,
+            taskCount: totalTasks,
+            completedTasks
+        };
+    });
+
+    // Fake performance data for last 6 months
+    const performanceData = [
+        { month: "Aug", value: 45000 },
+        { month: "Sep", value: 62000 },
+        { month: "Oct", value: 58000 },
+        { month: "Nov", value: 75000 },
+        { month: "Dec", value: 89000 },
+        { month: "Jan", value: 125000 }
     ];
+    const maxValue = Math.max(...performanceData.map(d => d.value), 1);
+
+    // Calculate budget distribution by campaign
+    const totalBudget = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
+    const budgetDistribution = campaigns
+        .filter(c => (c.budget || 0) > 0)
+        .map(c => ({
+            name: c.name,
+            value: totalBudget > 0 ? Math.round(((c.budget || 0) / totalBudget) * 100) : 0,
+            budget: c.budget || 0
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 4); // Top 4 campaigns
+
+    const colorClasses = {
+        emerald: "bg-emerald-500",
+        blue: "bg-blue-500",
+        amber: "bg-amber-500",
+        green: "bg-green-500",
+        purple: "bg-purple-500"
+    };
+
+    const colorNames = ["emerald", "blue", "amber", "green", "purple"];
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-slate-400">Loading reports...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -80,7 +173,7 @@ export default function ReportsAnalytics() {
                     return (
                         <div
                             key={index}
-                            className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 hover:border-slate-600/50 transition-all"
+                            className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 hover:border-slate-600/50 transition-all"
                         >
                             <div className="flex items-center justify-between mb-4">
                                 <div className={`p-3 rounded-xl ${colorClasses[card.color]}`}>
@@ -106,17 +199,30 @@ export default function ReportsAnalytics() {
                         </div>
                         <BarChart3 className="text-emerald-400" size={24} />
                     </div>
-                    <div className="h-64 flex items-end justify-between gap-2">
-                        {[45000, 62000, 58000, 75000, 89000, 125000].map((value, index) => (
-                            <div key={index} className="flex-1 flex flex-col items-center">
-                                <div
-                                    className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-lg mb-2 transition-all hover:opacity-80 cursor-pointer"
-                                    style={{ height: `${(value / 125000) * 100}%` }}
-                                />
-                                <span className="text-xs text-slate-400">M{index + 1}</span>
-                            </div>
-                        ))}
-                    </div>
+                    {performanceData.length > 0 ? (
+                        <div className="h-64 flex items-end justify-between gap-2 px-2">
+                            {performanceData.map((data, index) => {
+                                const heightPercent = maxValue > 0 ? (data.value / maxValue) * 100 : 0;
+                                return (
+                                    <div key={index} className="flex-1 flex flex-col items-center justify-end h-full">
+                                        <div
+                                            className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-lg transition-all hover:from-emerald-400 hover:to-emerald-300 cursor-pointer"
+                                            style={{ 
+                                                height: `${Math.max(heightPercent, 3)}%`,
+                                                minHeight: '12px'
+                                            }}
+                                            title={`${data.month}: ${data.value.toLocaleString()} impressions`}
+                                        />
+                                        <span className="text-xs text-slate-400 mt-2">{data.month}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="h-64 flex items-center justify-center">
+                            <p className="text-slate-400">No performance data available</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Campaign Distribution */}
@@ -124,31 +230,37 @@ export default function ReportsAnalytics() {
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h2 className="text-xl font-bold text-white mb-1">Budget Distribution</h2>
-                            <p className="text-slate-400 text-sm">By campaign type</p>
+                            <p className="text-slate-400 text-sm">By campaign</p>
                         </div>
                         <PieChart className="text-emerald-400" size={24} />
                     </div>
-                    <div className="space-y-4">
-                        {[
-                            { name: "Social Media", value: 35, color: "emerald" },
-                            { name: "Brand Awareness", value: 28, color: "blue" },
-                            { name: "Email Marketing", value: 22, color: "amber" },
-                            { name: "Product Launch", color: "green", value: 15 }
-                        ].map((item, index) => (
-                            <div key={index}>
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-slate-300">{item.name}</span>
-                                    <span className="text-white font-semibold">{item.value}%</span>
-                                </div>
-                                <div className="w-full bg-slate-700/50 rounded-full h-2">
-                                    <div
-                                        className={`h-2 rounded-full bg-${item.color}-500`}
-                                        style={{ width: `${item.value}%` }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    {budgetDistribution.length > 0 ? (
+                        <div className="space-y-4">
+                            {budgetDistribution.map((item, index) => {
+                                const color = colorNames[index % colorNames.length];
+                                return (
+                                    <div key={index}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-slate-300 text-sm truncate pr-2" title={item.name}>
+                                                {item.name}
+                                            </span>
+                                            <span className="text-white font-semibold">{item.value}%</span>
+                                        </div>
+                                        <div className="w-full bg-slate-700/50 rounded-full h-2">
+                                            <div
+                                                className={`h-2 rounded-full ${colorClasses[color]}`}
+                                                style={{ width: `${item.value}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="h-64 flex items-center justify-center">
+                            <p className="text-slate-400">No budget data available</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -157,47 +269,55 @@ export default function ReportsAnalytics() {
                 <div className="p-6 border-b border-slate-700/50">
                     <h2 className="text-xl font-bold text-white">Campaign Performance Details</h2>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-slate-700/30">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Campaign</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Impressions</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Clicks</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Conversions</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">CTR</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Budget</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-700/50">
-                            {campaignPerformance.map((campaign, index) => {
-                                const ctr = ((campaign.clicks / campaign.impressions) * 100).toFixed(2);
-                                return (
-                                    <tr key={index} className="hover:bg-slate-700/20 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <span className="text-white font-medium">{campaign.name}</span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-white">{campaign.impressions.toLocaleString()}</span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-white">{campaign.clicks.toLocaleString()}</span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-white">{campaign.conversions.toLocaleString()}</span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-emerald-400 font-semibold">{ctr}%</span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-white">${campaign.budget.toLocaleString()}</span>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                {campaignPerformance.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-slate-700/30">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Campaign</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Impressions</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Clicks</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Conversions</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">CTR</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Budget</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-700/50">
+                                {campaignPerformance.map((campaign, index) => {
+                                    const ctr = campaign.impressions > 0 
+                                        ? ((campaign.clicks / campaign.impressions) * 100).toFixed(2)
+                                        : "0.00";
+                                    return (
+                                        <tr key={index} className="hover:bg-slate-700/20 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <span className="text-white font-medium">{campaign.name}</span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-white">{campaign.impressions.toLocaleString()}</span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-white">{campaign.clicks.toLocaleString()}</span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-white">{campaign.conversions.toLocaleString()}</span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-emerald-400 font-semibold">{ctr}%</span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-white">${campaign.budget.toLocaleString()}</span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="p-8 text-center">
+                        <p className="text-slate-400">No campaigns found</p>
+                    </div>
+                )}
             </div>
         </div>
     );

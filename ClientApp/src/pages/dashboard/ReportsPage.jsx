@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Download, Filter, TrendingUp, BarChart3, PieChart } from "lucide-react";
+import { Filter, TrendingUp, BarChart3, PieChart } from "lucide-react";
 import { campaignsAPI, tasksAPI, invoicesAPI, clientsAPI } from "../../services/api";
 
 export default function ReportsPage() {
@@ -27,6 +27,10 @@ export default function ReportsPage() {
             const tasks = tasksRes.items || [];
             const invoices = invoicesRes.items || [];
             const clients = clientsRes.items || [];
+
+            // Debug: Log unique task statuses to verify what we're getting
+            const uniqueStatuses = [...new Set(tasks.map(t => t.status))];
+            console.log('Task statuses found:', uniqueStatuses);
 
             // Calculate revenue for last 12 months
             const paidInvoices = invoices.filter(inv => inv.status === 'Paid');
@@ -60,12 +64,22 @@ export default function ReportsPage() {
                 pending: campaigns.filter(c => c.status === 'Pending' || c.status === 'Planning').length
             };
 
-            // Task completion
-            const taskData = {
-                completed: tasks.filter(t => t.status === 'Completed').length,
-                inProgress: tasks.filter(t => t.status === 'In Progress').length,
-                pending: tasks.filter(t => t.status === 'Pending').length
+            // Task completion - normalize status values (handle both 'InProgress' and 'In Progress')
+            const normalizeStatus = (status) => {
+                if (!status) return status;
+                // Normalize common variations
+                if (status === 'In Progress' || status === 'InProgress') return 'InProgress';
+                return status;
             };
+
+            const taskData = {
+                completed: tasks.filter(t => normalizeStatus(t.status) === 'Completed').length,
+                inProgress: tasks.filter(t => normalizeStatus(t.status) === 'InProgress').length,
+                pending: tasks.filter(t => normalizeStatus(t.status) === 'Pending').length
+            };
+
+            // Debug: Log task counts
+            console.log('Task counts:', taskData);
 
             // Client growth (last 12 months)
             const clientGrowthData = [];
@@ -101,10 +115,17 @@ export default function ReportsPage() {
         ? Math.max(...revenueData.map(d => d.value), 1) 
         : 1;
 
+    // For campaign performance, ensure bars are visible with high contrast
     const maxCampaigns = Math.max(campaignData.active, campaignData.completed, campaignData.pending, 1);
+    // Scale so max value uses ~100% of height for maximum prominence
+    const campaignScale = maxCampaigns > 0 ? maxCampaigns : 1;
+    
+    // For client growth, ensure bars are visible with high contrast
     const maxClients = clientGrowth.length > 0 
         ? Math.max(...clientGrowth.map(d => d.value), 1) 
         : 1;
+    // Scale so max value uses ~100% of height for maximum prominence
+    const clientScale = maxClients > 0 ? maxClients : 1;
 
     const totalTasks = taskData.completed + taskData.inProgress + taskData.pending;
     const taskPercentages = {
@@ -134,17 +155,13 @@ export default function ReportsPage() {
                         <Filter size={20} />
                         Filter
                     </button>
-                    <button className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all flex items-center gap-2">
-                        <Download size={20} />
-                        Export Report
-                    </button>
                 </div>
             </div>
 
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Revenue Chart */}
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h2 className="text-xl font-bold text-white mb-1">Revenue Growth</h2>
@@ -154,21 +171,33 @@ export default function ReportsPage() {
                     </div>
                     {revenueData.length > 0 ? (
                         <div className="h-64 flex items-end justify-between gap-1">
-                            {revenueData.map((data, index) => (
-                                <div key={index} className="flex-1 flex flex-col items-center group">
-                                    <div className="w-full relative">
-                                        <div
-                                            className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-lg mb-2 transition-all hover:opacity-80 cursor-pointer"
-                                            style={{ height: `${(data.value / maxRevenue) * 100}%`, minHeight: '4px' }}
-                                            title={`${data.fullMonth}: $${data.value.toLocaleString()}`}
-                                        />
+                            {revenueData.map((data, index) => {
+                                // Calculate height percentage - ensure bars are visible
+                                let heightPercent = 0;
+                                if (data.value > 0 && maxRevenue > 0) {
+                                    heightPercent = (data.value / maxRevenue) * 100;
+                                    // Ensure minimum height for visibility (at least 10% for non-zero values)
+                                    heightPercent = Math.max(heightPercent, 10);
+                                } else {
+                                    // Zero values get a small visible indicator
+                                    heightPercent = 2;
+                                }
+                                return (
+                                    <div key={index} className="flex-1 flex flex-col items-center group h-full">
+                                        <div className="w-full h-full flex items-end">
+                                            <div
+                                                className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-lg mb-2 transition-all hover:opacity-80 cursor-pointer"
+                                                style={{ height: `${heightPercent}%`, minHeight: data.value === 0 ? '2px' : '8px' }}
+                                                title={`${data.fullMonth}: $${data.value.toLocaleString()}`}
+                                            />
+                                        </div>
+                                        <span className="text-xs text-slate-400 mt-2">{data.month}</span>
+                                        <span className="text-xs text-slate-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            ${data.value.toLocaleString()}
+                                        </span>
                                     </div>
-                                    <span className="text-xs text-slate-400">{data.month}</span>
-                                    <span className="text-xs text-slate-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        ${data.value.toLocaleString()}
-                                    </span>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="h-64 flex items-center justify-center">
@@ -194,42 +223,79 @@ export default function ReportsPage() {
                 </div>
 
                 {/* Campaign Performance */}
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-6">
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
+                    {/* Header - Fixed at top with proper spacing */}
+                    <div className="flex items-center justify-between mb-8">
                         <div>
                             <h2 className="text-xl font-bold text-white mb-1">Campaign Performance</h2>
                             <p className="text-slate-400 text-sm">By status</p>
                         </div>
-                        <BarChart3 className="text-blue-400" size={24} />
+                        <BarChart3 className="text-blue-400 flex-shrink-0" size={24} />
                     </div>
-                    <div className="h-64 flex items-end justify-between gap-4">
-                        {[
-                            { label: "Active", value: campaignData.active, colorClass: "from-emerald-500 to-emerald-400" },
-                            { label: "Completed", value: campaignData.completed, colorClass: "from-blue-500 to-blue-400" },
-                            { label: "Pending", value: campaignData.pending, colorClass: "from-amber-500 to-amber-400" }
-                        ].map((item, index) => (
-                            <div key={index} className="flex-1 flex flex-col items-center">
-                                <div className="flex flex-col items-center mb-2">
-                                    <span className="text-2xl font-bold text-white mb-1">{item.value}</span>
-                                    <span className="text-xs text-slate-400">{item.label}</span>
+                    
+                    {/* Graph Area - Bars starting from bottom */}
+                    <div className="mb-6">
+                        <div className="h-44 flex items-end justify-between gap-4">
+                            {[
+                                { label: "Active", value: campaignData.active, colorClass: "from-emerald-500 to-emerald-400" },
+                                { label: "Completed", value: campaignData.completed, colorClass: "from-blue-500 to-blue-400" },
+                                { label: "Pending", value: campaignData.pending, colorClass: "from-amber-500 to-amber-400" }
+                            ].map((item, index) => {
+                                // Calculate height in pixels - proportional scaling based on max value
+                                // Container height is 176px (h-44 = 11rem = 176px)
+                                let barHeight = 0;
+                                if (item.value > 0 && campaignScale > 0) {
+                                    // Direct proportional scaling: value 2 = 176px, value 1 = 88px, etc.
+                                    barHeight = (item.value / campaignScale) * 176;
+                                    // Ensure it doesn't exceed container height
+                                    barHeight = Math.min(barHeight, 176);
+                                } else if (item.value === 0) {
+                                    // Zero values get a small visible indicator
+                                    barHeight = 4;
+                                }
+                                return (
+                                    <div key={index} className="flex-1 flex flex-col items-center h-full">
+                                        {/* Bar Container - aligned to bottom */}
+                                        <div className="w-full h-44 flex items-end">
+                                            <div
+                                                className={`w-full bg-gradient-to-t ${item.colorClass} rounded-t-lg transition-all hover:opacity-80 ${item.value === 0 ? 'opacity-50' : ''}`}
+                                                style={{ 
+                                                    height: `${barHeight}px`, 
+                                                    minHeight: item.value === 0 ? '4px' : '0px'
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        
+                        {/* Labels Below Bars - Separate row */}
+                        <div className="flex justify-between gap-4 mt-4">
+                            {[
+                                { label: "Active", value: campaignData.active },
+                                { label: "Completed", value: campaignData.completed },
+                                { label: "Pending", value: campaignData.pending }
+                            ].map((item, index) => (
+                                <div key={index} className="flex-1 flex flex-col items-center">
+                                    <span className="text-2xl font-bold text-white">{item.value}</span>
+                                    <span className="text-xs text-slate-400 mt-1">{item.label}</span>
                                 </div>
-                                <div
-                                    className={`w-full bg-gradient-to-t ${item.colorClass} rounded-t-lg transition-all hover:opacity-80`}
-                                    style={{ height: `${(item.value / maxCampaigns) * 100}%`, minHeight: '4px' }}
-                                />
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-slate-700/50">
+
+                    {/* Stats Section - Clear separation with border */}
+                    <div className="pt-6 mt-6 border-t border-slate-700/50">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-slate-400 text-sm">Total Campaigns</p>
+                                <p className="text-slate-400 text-sm mb-1">Total Campaigns</p>
                                 <p className="text-xl font-bold text-white">
                                     {campaignData.active + campaignData.completed + campaignData.pending}
                                 </p>
                             </div>
                             <div className="text-right">
-                                <p className="text-slate-400 text-sm">Completion Rate</p>
+                                <p className="text-slate-400 text-sm mb-1">Completion Rate</p>
                                 <p className="text-xl font-bold text-emerald-400">
                                     {campaignData.active + campaignData.completed + campaignData.pending > 0
                                         ? Math.round((campaignData.completed / (campaignData.active + campaignData.completed + campaignData.pending)) * 100)
@@ -241,7 +307,7 @@ export default function ReportsPage() {
                 </div>
 
                 {/* Task Completion */}
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h2 className="text-xl font-bold text-white mb-1">Task Completion</h2>
@@ -286,7 +352,7 @@ export default function ReportsPage() {
                 </div>
 
                 {/* Client Growth */}
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h2 className="text-xl font-bold text-white mb-1">Client Growth</h2>
@@ -296,21 +362,36 @@ export default function ReportsPage() {
                     </div>
                     {clientGrowth.length > 0 ? (
                         <div className="h-64 flex items-end justify-between gap-1">
-                            {clientGrowth.map((data, index) => (
-                                <div key={index} className="flex-1 flex flex-col items-center group">
-                                    <div className="w-full relative">
-                                        <div
-                                            className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg mb-2 transition-all hover:opacity-80 cursor-pointer"
-                                            style={{ height: `${(data.value / maxClients) * 100}%`, minHeight: '4px' }}
-                                            title={`${data.month}: ${data.value} new client${data.value !== 1 ? 's' : ''}`}
-                                        />
+                            {clientGrowth.map((data, index) => {
+                                // Calculate height percentage - ensure bars are visible
+                                let heightPercent = 0;
+                                if (data.value > 0 && clientScale > 0) {
+                                    // Direct proportional scaling - max value gets 100% height
+                                    heightPercent = (data.value / clientScale) * 100;
+                                    // Cap at 100% for the maximum value
+                                    heightPercent = Math.min(heightPercent, 100);
+                                    // Ensure minimum height for visibility (at least 10% for non-zero values)
+                                    heightPercent = Math.max(heightPercent, 10);
+                                } else {
+                                    // Zero values get a small visible indicator
+                                    heightPercent = 2;
+                                }
+                                return (
+                                    <div key={index} className="flex-1 flex flex-col items-center group h-full">
+                                        <div className="w-full h-full flex items-end">
+                                            <div
+                                                className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-lg mb-2 transition-all hover:opacity-80 cursor-pointer"
+                                                style={{ height: `${heightPercent}%`, minHeight: data.value === 0 ? '2px' : '8px' }}
+                                                title={`${data.month}: ${data.value} new client${data.value !== 1 ? 's' : ''}`}
+                                            />
+                                        </div>
+                                        <span className="text-xs text-slate-400 mt-2">{data.month}</span>
+                                        <span className="text-xs text-slate-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {data.value}
+                                        </span>
                                     </div>
-                                    <span className="text-xs text-slate-400">{data.month}</span>
-                                    <span className="text-xs text-slate-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {data.value}
-                                    </span>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="h-64 flex items-center justify-center">
@@ -327,7 +408,7 @@ export default function ReportsPage() {
                             </div>
                             <div className="text-right">
                                 <p className="text-slate-400 text-sm">Average/Month</p>
-                                <p className="text-xl font-bold text-blue-400">
+                                <p className="text-xl font-bold text-emerald-400">
                                     {clientGrowth.length > 0 
                                         ? (clientGrowth.reduce((sum, d) => sum + d.value, 0) / clientGrowth.length).toFixed(1)
                                         : 0}

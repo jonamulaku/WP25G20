@@ -50,19 +50,40 @@ namespace WP25G20.Services
             // If userId provided and not admin, filter to only show campaigns user has access to
             if (!string.IsNullOrEmpty(userId) && (isAdmin == null || !isAdmin.Value))
             {
-                // Get the user to find their email for TeamMember lookup
+                // Get the user to find their email for TeamMember and Client lookup
                 var user = await _userManager.FindByIdAsync(userId);
-                var teamMember = user != null 
-                    ? await _context.TeamMembers.FirstOrDefaultAsync(tm => tm.Email.ToLower() == user.Email.ToLower())
-                    : null;
+                if (user == null)
+                {
+                    return new PagedResultDTO<CampaignDTO>
+                    {
+                        Items = new List<CampaignDTO>(),
+                        TotalCount = 0,
+                        PageNumber = filter.PageNumber,
+                        PageSize = filter.PageSize
+                    };
+                }
 
-                query = query.Where(c => 
-                    c.CreatedById == userId || 
-                    c.CampaignUsers.Any(cu => cu.UserId == userId) ||
-                    // Also show campaigns where user has tasks assigned
-                    (teamMember != null && c.Tasks.Any(t => t.AssignedToTeamMemberId == teamMember.Id)) ||
-                    (teamMember == null && c.Tasks.Any(t => t.AssignedToId == userId))
-                );
+                var userRoles = await _userManager.GetRolesAsync(user);
+                var isClient = userRoles.Contains("Client");
+                
+                var teamMember = await _context.TeamMembers.FirstOrDefaultAsync(tm => tm.Email.ToLower() == user.Email.ToLower());
+
+                if (isClient)
+                {
+                    // For Client users, show only campaigns for their client (matching by email)
+                    query = query.Where(c => c.Client.Email.ToLower() == user.Email.ToLower());
+                }
+                else
+                {
+                    // For Team members, show campaigns they have access to
+                    query = query.Where(c => 
+                        c.CreatedById == userId || 
+                        c.CampaignUsers.Any(cu => cu.UserId == userId) ||
+                        // Also show campaigns where user has tasks assigned
+                        (teamMember != null && c.Tasks.Any(t => t.AssignedToTeamMemberId == teamMember.Id)) ||
+                        (teamMember == null && c.Tasks.Any(t => t.AssignedToId == userId))
+                    );
+                }
             }
 
             // Apply search
@@ -297,6 +318,13 @@ namespace WP25G20.Services
                 throw new UnauthorizedAccessException("You do not have permission to update this campaign.");
             }
 
+            // Validate client exists if ClientId is being changed
+            if (dto.ClientId != campaign.ClientId)
+            {
+                if (!await _clientRepository.ExistsAsync(dto.ClientId))
+                    throw new ArgumentException("Client not found");
+            }
+
             // Validate service exists if ServiceId is being changed
             if (dto.ServiceId != campaign.ServiceId)
             {
@@ -308,6 +336,7 @@ namespace WP25G20.Services
 
             campaign.Name = dto.Name;
             campaign.Description = dto.Description;
+            campaign.ClientId = dto.ClientId;
             campaign.ServiceId = dto.ServiceId;
             campaign.StartDate = dto.StartDate;
             campaign.EndDate = dto.EndDate;
@@ -316,6 +345,20 @@ namespace WP25G20.Services
             
             if (Enum.TryParse<CampaignStatus>(dto.Status, out var status))
             {
+                // Validate: Cannot set status to Completed if not all tasks are completed
+                if (status == CampaignStatus.Completed)
+                {
+                    var campaignTasks = await _context.Tasks
+                        .Where(t => t.CampaignId == id)
+                        .ToListAsync();
+                    
+                    if (campaignTasks.Any() && campaignTasks.Any(t => t.Status != TaskStatus.Completed))
+                    {
+                        var incompleteTasks = campaignTasks.Where(t => t.Status != TaskStatus.Completed).Count();
+                        throw new InvalidOperationException($"Cannot mark campaign as Completed. {incompleteTasks} task(s) are not yet completed. Please complete all tasks before marking the campaign as completed.");
+                    }
+                }
+                
                 campaign.Status = status;
             }
 

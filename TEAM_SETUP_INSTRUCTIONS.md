@@ -2,6 +2,12 @@
 
 ## For Everyone (First Time Setup)
 
+FIRST THING:
+ClientApp/ npm install
+WP25G20/ dotnet restore
+WP25G20/ dotnet build
+
+
 ### 1. Create Your Local Configuration
 
 **Copy the template file:**
